@@ -87,6 +87,8 @@ To get the 'size' of 'item zing':
     >>> print my_var["item", "zing"].value("size")
     4
 
+Of note: the 'value' method returns the first entry that matches, if there are any matches. Later entries are ignored. If no entries match, then None is returned.
+
 Of course, one could also do:
 
     >>> print my_var["item", "zing"].get_list("size")[0]
@@ -111,7 +113,7 @@ Another example:
     >>> print my_var["item", "broom"].value("size")
     9
     
-And example that assumes we do not know the current size:
+An example that assumes we do not know the current size:
 
     >>> size = my_var["item", "broom"].value("size")
     >>> my_var["item", "broom"]["size", size] = "11"
@@ -123,3 +125,5 @@ Or, even simpler:
     >>> my_var["item", "broom"].reset_value("size", "13")
     >>> print my_var["item", "broom"].value("size")
     13
+
+Just like the 'value' method, the 'reset_value' method only operates on the first entry found.

@@ -57,34 +57,34 @@ To build the above example:
 
 To get the list of items:
 
-    >>> print my_var["item"]
+    >>> print my_var.list("item")
     ["zing", "womp", "bam", "broom"]
     
 To get the 'colors' of 'item zing':
 
-    >>> print my_var["item", "zing"]["color"]
+    >>> print my_var["item", "zing"].list("color")
     ["red", "blue"]
     
     
 To get the 'colors' of 'item bam':
 
-    >>> print my_var["item", "bam"]
+    >>> print my_var["item", "bam"].list("color")
     []
     
 To get the 'size' of 'item zing':
 
-    >>> print my_var["item", "zing"].first("size")
+    >>> print my_var["item", "zing"].value("size")
     4
 
 Of course, one could also do:
 
-    >>> print my_var["item", "zing"]["size"][0]
+    >>> print my_var["item", "zing"].list("size")[0]
     4
 
 But only do this if you are confident there is a size value. Otherwise you could get a key error.
 
 To get the 'size' of 'item bam':
 
-    >>> print my_var["item", "bam"].first("size")
+    >>> print my_var["item", "bam"].value("size")
     None
     

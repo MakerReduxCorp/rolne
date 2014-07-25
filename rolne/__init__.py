@@ -86,6 +86,12 @@ class rolne(object):
             if en==name:
                 return ev
         return None
+
+    def reset_value(self, name, value):
+        for (en, ev, el) in self.data:
+            if en==name:
+                return self.__setitem__((en, ev), value)
+        return False
     
 if __name__ == "__main__":
 
@@ -109,11 +115,13 @@ if __name__ == "__main__":
         my_var.append("system_title", "hello")
 
         print "a", my_var
-        print "b", my_var["item", "zing"]
-        print "c", my_var.get_list("item")
-        my_var["item", "broom"]["size", "7"] = "9"
-        print "d", my_var
-        print "e", my_var["item", "broom"].value("size")
+        #print "b", my_var["item", "zing"]
+        #print "c", my_var.get_list("item")
+        #my_var["item", "broom"]["size", "7"] = '9'
+        #print "d", my_var
+        #print "e", my_var["item", "bam"].value("size")
+        my_var["item", "zing"].reset_value("color", "white")
+        print "f", my_var
 
     else:
         print "==================================="

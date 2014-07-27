@@ -10,7 +10,7 @@ Internally, the rolne data type is stored as a list of three-item tuples. Each t
 each tuple_list is a list of tuples of the same type. Structurally, the following MARDS text:
 
     item zing
-       size 4
+        size 4
         color red
             intensity 44%
         color yellow
@@ -22,6 +22,11 @@ each tuple_list is a list of tuples of the same type. Structurally, the followin
         size 7
         title "The "big" thing"
     zoom_flag
+    code_seq
+        * r9
+        * r3
+        * r2
+        * r3
     system_title hello
 
 becomes:
@@ -46,36 +51,93 @@ Usage
 
 Simply use the class for the declaration:
 
+    test = rolne()
+
+To simply add a name/value pair, use either the 'append' or 'upsert' method.
+
+The 'append' method adds the name/value pair to the end of the list.
+
+    test.append("aa", "1")
+    test.append("aa", "1")
+
+which results in:
+
+    aa 1
+    aa 1
+    bb 2
+    
+The 'upsert' method only adds the name/value pair to the list if it does not exist elsewhere.
+
+    test.upsert("bb", "2")
+    test.upsert("bb", "2")
+   
+which results in:
+
+    aa 1
+    aa 1
+    bb 2
+
+As a general rule, use upsert when you want a particular name/value pair to exist in only one place. Use append when
+duplicates are just fine.
+
+To reference the _first_ occurance of a name/value pair in the list, one can either use the 'first' method or directly reference with with the name/value tuple enclosed in brackets. For example:
+
+    test.first("aa", "1")
+    
+and
+
+    test["aa", "1"]
+    
+both refer to the first occurance of _aa 1_.
+
+Using such a reference, one could 'append' or 'upsert' name/value children:
+
+    test["aa", "1"].upsert("z", "5")
+    
+which results in:
+
+    aa 1
+        z 5
+    aa 1
+    bb 2
+
+To build the example from the intro:
+
     my_var = rolne()
-
-To build the above example:
-
-    my_var.append("item", "zing")
-    my_var["item", "zing"].append("size", "4")
-    my_var["item", "zing"].append("color", "red")
-    my_var["item", "zing"]["color", "red"].append("intensity", "44%")
-    my_var["item", "zing"].append("color", "yellow")
-    my_var.append("item", "womp")
-    my_var["item", "womp"].append("size", "5")
-    my_var["item", "womp"].append("color", "blue")
-    my_var.append("item", "bam")
-    my_var.append("item", "broom")
-    my_var["item", "broom"].append("size", "7")
-    my_var["item", "broom"].append("title", 'The "big" thing')
-    my_var.append("zoom_flag")
-    my_var.append("system_title", "hello")
-
+    my_var.upsert("item", "zing")
+    my_var["item", "zing"].upsert("size", "4")
+    my_var["item", "zing"].upsert("color", "red")
+    my_var["item", "zing"]["color", "red"].upsert("intensity", "44%")
+    my_var["item", "zing"].upsert("color", "yellow")
+    my_var.upsert("item", "womp")
+    my_var["item", "womp"].upsert("size", "5")
+    my_var["item", "womp"].upsert("color", "blue")
+    my_var.upsert("item", "bam")
+    my_var.upsert("item", "broom")
+    my_var["item", "broom"].upsert("size", "7")
+    my_var["item", "broom"].upsert("title", 'The "big" thing')
+    my_var.upsert("zoom_flag")
+    my_var.upsert("code_seq")
+    my_var["code_seq", None].append("*", "r9")
+    my_var["code_seq", None].append("*", "r3")
+    my_var["code_seq", None].append("*", "r2")
+    my_var["code_seq", None].append("*", "r3")
+    my_var.upsert("system_title", "hello")
 
 To get the list of items:
 
     >>> print my_var.get_list("item")
     ["zing", "womp", "bam", "broom"]
     
+To get the list of entries in 'code_seq':
+
+    >>> print my_var["code_seq", None].get_list("*")
+    ["r9", "r3", "r2", "r3"]
+    
 To get the 'colors' of 'item zing':
 
     >>> print my_var["item", "zing"].get_list("color")
     ["red", "blue"]
-    
     
 To get the 'colors' of 'item bam':
 

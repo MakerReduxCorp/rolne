@@ -16,8 +16,9 @@ class rolne(object):
         self.data = in_list
 
     def __str__(self):
-        result = "<rolne datatype object>\n"
+        result = "<rolne datatype object\n"
         result += self.mards()
+        result += ">"
         return result
 
     def __getitem__(self, tup):
@@ -96,15 +97,35 @@ class rolne(object):
         return None
 
     def __setitem__(self, tup, value):
-        name, cur_value = tup
+        if not isinstance(tup, tuple):
+            tup = (tup, None)
+        (name, cur_value, index) = (None, None, 0)
+        index_flag = False
+        if len(tup)>0:
+            name = tup[0]
+        if len(tup)>1:
+            cur_value = tup[1]
+        if len(tup)>2:
+            index = tup[2]
+            index_flag = True
+        start_ctr = 0
         for i,(entry_name, entry_value, entry_list) in enumerate(self.data):
             if entry_name==name:
                 if entry_value==cur_value:
-                    new_tuple = (entry_name, value, entry_list)
-                    self.data[i] = new_tuple
-                    return True
-        self.append(name, value)
+                    if start_ctr==index:
+                        new_tuple = (entry_name, value, entry_list)
+                        self.data[i] = new_tuple
+                        return True
+                    else:
+                        start_ctr += 1
+        if index_flag:
+            raise KeyError, repr(tup)+" not found"
+        else:
+            self.upsert(name, value)
         return True
+
+    def find(self, *argv):
+        return self.__getitem__(argv)
 
     def mards(self):
         result = ""
@@ -197,9 +218,10 @@ if __name__ == "__main__":
         print "a", my_var
         #print "aa", my_var["zoom_flag"]
         print "b", my_var["code_seq"]
+        print "bb", my_var.find("code_seq")
         #print "c", my_var.get_list("item")
-        #my_var["item", "broom"]["size", "7"] = '9'
-        #print "d", my_var
+        my_var["code_seq"]["*", "r9"] = 'zings'
+        print "d", my_var
         #print "e", my_var["item", "bam"].value("size")
         #my_var["item", "zing"].reset_value("color", "white")
         #print "f", my_var

@@ -56,6 +56,7 @@ Usage
 
 Simply use the class for the declaration:
 
+    from rolne import rolne
     test = rolne()
 
 To simply add a name/value pair, use either the 'append' or 'upsert' method.
@@ -69,8 +70,7 @@ which results in:
 
     aa 1
     aa 1
-    bb 2
-    
+
 The 'upsert' method only adds the name/value pair to the list if it does not exist elsewhere.
 
     test.upsert("bb", "2")

@@ -32,19 +32,24 @@ each tuple_list is a list of tuples of the same type. Structurally, the followin
 becomes:
 
     [
-        ("item", "zing", [
-            ("size", "4", []), ("color", "red", []), ("color", "yellow", [])
+        ('item', 'zing', [
+            ('size', '4', []), ('color', 'red', [('intensity', '44%', [])]), ('color', 'yellow', [])
         ]),
-        ("item", "womp", [
-            ("size", "5", []), ("color", "blue", [])
+        ('item', 'womp', [
+            ('size', '5', []), ('color', 'blue', [])
         ]),
-        ("item", "bam", []),
-        ("item", "broom", [("size", "7", [])]),
-        ("zoom_flag", None, []),
-        ("system_title", "hello", [])
+        ('item', 'bam', []),
+        ('item', 'broom', [
+            ('size', '7', []), ('title', 'The "big" thing', [])
+        ]),
+        ('zoom_flag', None, []),
+        ('code_seq', None, [
+            ('*', 'r9', []), ('*', 'r3', []), ('*', 'r2', []), ('*', 'r3', [])
+        ]),
+        ('system_title', 'hello', [])
     ]
-    
-One could parse a rolne data type without this library as python already supports tuples and lists.
+
+One could technically parse a rolne data type without this library as python already supports tuples and lists.
 
 Usage
 -----
@@ -80,15 +85,33 @@ which results in:
 As a general rule, use upsert when you want a particular name/value pair to exist in only one place. Use append when
 duplicates are just fine.
 
-To reference the _first_ occurance of a name/value pair in the list, one can either use the 'first' method or directly reference with with the name/value tuple enclosed in brackets. For example:
+If a second parameter is not passed (or if set to None), then the value is assumed to be None also:
 
-    test.first("aa", "1")
+    test.upsert("cc")
+    
+results in:
+
+    aa 1
+    aa 1
+    bb 2
+    cc
+
+To locate an entry in the list, one can either use the 'find' method, or place those same parameters into brackets adjacent to the variable:
+
+    test.find("aa", "1")
     
 and
 
     test["aa", "1"]
     
 both refer to the first occurance of _aa 1_.
+
+In general, the find parameters are: _name_, _value_, and _index_. Where _name_ (required) is the name of the name/value pair. If present, then _value_ is the value of the pair. If not present, then _value_ is assumed to be None. If _index_ is present, then it indicates the "list position" of all matches. It defaults to 0 if not present; which locates the first match. Some examples:
+
+    test["aa", "1"]       # find the first 'aa 1'
+    test["aa", "1", 0]    # same thing: find the first 'aa 1'
+    test["aa", "1", 1]    # find the second 'aa 1'
+    test["cc"]            # find the first 'cc None'
 
 Using such a reference, one could 'append' or 'upsert' name/value children:
 
@@ -100,6 +123,7 @@ which results in:
         z 5
     aa 1
     bb 2
+    cc
 
 To build the example from the intro:
 
@@ -124,7 +148,7 @@ To build the example from the intro:
     my_var["code_seq", None].append("*", "r3")
     my_var.upsert("system_title", "hello")
 
-To get the list of items:
+To get the list of 'items':
 
     >>> print my_var.get_list("item")
     ["zing", "womp", "bam", "broom"]
@@ -188,4 +212,10 @@ Or, even simpler:
     >>> print my_var["item", "broom"].value("size")
     13
 
-Just like the 'value' method, the 'reset_value' method only operates on the first entry found.
+
+
+    
+    
+    
+    
+

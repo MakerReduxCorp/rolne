@@ -86,11 +86,16 @@ class rolne(object):
             if len(tup)>2:
                 index = tup[2]
             start_ctr = 0
-            for entry in self.data:
+            if index<0:
+                search_data = reversed(list(enumerate(self.data)))
+                index = -index - 1
+            else:
+                search_data = enumerate(self.data)
+            for i, entry in search_data:
                 if entry[0]==name:
                     if entry[1]==value:
                         if start_ctr==index:
-                            return(rolne(entry[2]))
+                            return(rolne(self.data[i][2]))
                         else:
                             start_ctr += 1
         raise KeyError, repr(tup)+" not found"
@@ -205,8 +210,14 @@ if __name__ == "__main__":
         my_var["item", "womp"].upsert("color", "blue")
         my_var.upsert("item", "bam")
         my_var.upsert("item", "broom")
-        my_var["item", "broom"].upsert("size", "7")
-        my_var["item", "broom"].upsert("title", 'The "big" thing')
+        my_var["item", "broom", -1].upsert("size", "1")
+        my_var["item", "broom", -1].upsert("title", 'The "big" thing')
+        my_var.append("item", "broom")
+        my_var["item", "broom", -1].upsert("size", "2")
+        my_var["item", "broom", -1].upsert("title", 'The "big" thing')
+        my_var.append("item", "broom")
+        my_var["item", "broom", -1].upsert("size", "3")
+        my_var["item", "broom", -1].upsert("title", 'The "big" thing')
         my_var.upsert("zoom_flag")
         my_var.upsert("code_seq")
         my_var["code_seq", None].append("*", "r9")
@@ -217,14 +228,15 @@ if __name__ == "__main__":
 
         print "a", my_var
         #print "aa", my_var["zoom_flag"]
-        print "b", my_var["code_seq"]
-        print "bb", my_var.find("code_seq")
+        #print "b", my_var["code_seq"]
+        #print "bb", my_var.find("code_seq")
         #print "c", my_var.get_list("item")
-        my_var["code_seq"]["*", "r9"] = 'zings'
-        print "d", my_var
+        #my_var["code_seq"]["*", "r9"] = 'zings'
+        #print "d", my_var
         #print "e", my_var["item", "bam"].value("size")
         #my_var["item", "zing"].reset_value("color", "white")
         #print "f", my_var
+        print "g", my_var["item", "broom", -1]
 
     else:
         print "==================================="

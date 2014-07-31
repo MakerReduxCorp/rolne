@@ -21,6 +21,9 @@ class rolne(object):
         result += ">"
         return result
 
+    def __len__(self):
+        return len(self.data)
+        
     def __getitem__(self, tup):
         if isinstance(tup, slice):
             (start_name, start_value, start_index) = (None, None, 0)
@@ -129,6 +132,36 @@ class rolne(object):
             self.upsert(name, value)
         return True
 
+    def __contains__(self, target):
+        target_value_missing = True
+        target_name = target
+        target_index = 0
+        if isinstance(target, tuple):
+            if len(target)>0:
+                target_name = target[0]
+            if len(target)>1:
+                target_value = target[1]
+                target_value_missing = False
+            if len(target)>2:
+                target_index = target[2]
+        ctr = 0
+        for i,(entry_name, entry_value, entry_list) in enumerate(self.data):
+                if (entry_name==target_name):
+                    if target_value_missing:
+                        return True
+                    else:
+                        if entry_value==target_value:
+                            if ctr==target_index:
+                                return True
+                            else:
+                                ctr += 1
+        return False
+
+    def __iter__(self):
+        for entry in self.data:
+            x = rolne([entry])
+            yield x
+
     def find(self, *argv):
         return self.__getitem__(argv)
 
@@ -161,8 +194,10 @@ class rolne(object):
             result = "None\n"
         return result
 
-    def append(self, name, value=None):
-        new_tuple = (name, value, [])
+    def append(self, name, value=None, sublist=None):
+        if sublist is None:
+            sublist = []
+        new_tuple = (name, value, sublist)
         self.data.append(new_tuple)
         return True
 
@@ -175,19 +210,53 @@ class rolne(object):
         self.data.append(new_tuple)
         return True
 
-
-    def get_list(self, name):
+    def get_list(self, name=None):
         result = []
         for entry in self.data:
-            if entry[TNAME]==name:
+            if (entry[TNAME]==name) or (name is None):
                 result.append(entry[TVALUE])
         return result
 
+    def get_names(self):
+        result = []
+        for entry in self.data:
+            result.append(entry[TNAME])
+        return result
+
+    def get_tuples(self, name=None):
+        result = []
+        for entry in self.data:
+            if (entry[TNAME]==name) or (name is None):
+                result.append((entry[TNAME], entry[TVALUE]))
+        return result
+        
     def value(self, name):
         for (en, ev, el) in self.data:
             if en==name:
                 return ev
         return None
+
+    def summarize(self, name, *args):
+        # we are using *args for 'value' because None is a valid value parameter that
+        # must be distinquished from a _missing_ parameter.
+        if args:
+            value = args[0]
+            value_missing = False
+        else:
+            value = None
+            value_missing = True
+        value_list = []
+        summary = []
+        for (en, ev, el) in self.data:
+            if en==name:
+                if value_missing or ev==value:
+                    value_list.append(ev)
+                    summary.append((en, ev, el))
+        return (name, value_list, rolne(in_list = summary))
+
+    def filter(self, *argv):
+        return self.summarize(*argv)[2]
+
 
     def reset_value(self, name, value):
         for (en, ev, el) in self.data:
@@ -236,7 +305,10 @@ if __name__ == "__main__":
         #print "e", my_var["item", "bam"].value("size")
         #my_var["item", "zing"].reset_value("color", "white")
         #print "f", my_var
-        print "g", my_var["item", "broom", -1]
+        #print "g", my_var["item", "broom", -1]
+        for x in my_var:
+            print x
+            print
 
     else:
         print "==================================="

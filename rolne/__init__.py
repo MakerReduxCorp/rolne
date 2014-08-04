@@ -12,8 +12,11 @@ TLIST = 2
 
 class rolne(object):
 
-    def __init__(self, in_list=[]):
-        self.data = in_list
+    def __init__(self, in_list=None):
+        if in_list is None:
+            self.data = []
+        else:
+            self.data = in_list
 
     def __str__(self):
         result = "<rolne datatype object\n"

@@ -2,7 +2,7 @@
 #
 # rolne datatype class: Recursive Ordered List of Named Elements
 #
-# Version 0.1.0
+# Version 0.1.4
     
 import copy
 
@@ -204,6 +204,15 @@ class rolne(object):
         self.data.append(new_tuple)
         return True
 
+    def append_index(self, name, value=None, sublist=None):
+        if sublist is None:
+            sublist = []
+        new_tuple = (name, value, sublist)
+        self.data.append(new_tuple)
+        index = len(self.get_list(name, value)) - 1
+        return index
+
+
     def upsert(self, name, value=None):
         new_tuple = (name, value, [])
         for entry in self.data:
@@ -213,11 +222,25 @@ class rolne(object):
         self.data.append(new_tuple)
         return True
 
-    def get_list(self, name=None):
+    def get_list(self, *args):
+        #         name=None):
+        arg_count = len(args)
         result = []
+        ctr = 0
         for entry in self.data:
-            if (entry[TNAME]==name) or (name is None):
+            if arg_count==0:
                 result.append(entry[TVALUE])
+            if arg_count==1:
+                if entry[TNAME]==args[0]:
+                    result.append(entry[TVALUE])
+            if arg_count==2:
+                if entry[TNAME]==args[0] and entry[TVALUE]==args[1]:
+                    result.append(entry[TVALUE])
+            if arg_count==3:
+                if entry[TNAME]==args[0] and entry[TVALUE]==args[1]:
+                    if ctr==args[2]:
+                        result.append(entry[TVALUE])
+                    ctr += 1
         return result
 
     def get_names(self):
@@ -302,16 +325,19 @@ if __name__ == "__main__":
         #print "aa", my_var["zoom_flag"]
         #print "b", my_var["code_seq"]
         #print "bb", my_var.find("code_seq")
-        #print "c", my_var.get_list("item")
+        print "c1", my_var.get_list()
+        print "c2", my_var.get_list("item")
+        print "c3", my_var.get_list("item", "broom")
+        print "c4", my_var.get_list("item", "broom", 2)
+        print "c5", my_var.get_list("item", "broom", 9)
         #my_var["code_seq"]["*", "r9"] = 'zings'
         #print "d", my_var
         #print "e", my_var["item", "bam"].value("size")
         #my_var["item", "zing"].reset_value("color", "white")
         #print "f", my_var
         #print "g", my_var["item", "broom", -1]
-        for x in my_var:
-            print x
-            print
+        print my_var.append_index("item", "broom")
+        print my_var
 
     else:
         print "==================================="

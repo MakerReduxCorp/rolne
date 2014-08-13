@@ -2,7 +2,7 @@
 #
 # rolne datatype class: Recursive Ordered List of Named Elements
 #
-# Version 0.1.4
+# Version 0.1.5
     
 import copy
 
@@ -166,7 +166,74 @@ class rolne(object):
             yield x
 
     def find(self, *argv):
-        return self.__getitem__(argv)
+        """Locate a single rolne entry.
+
+        This function is very similar to simply doing a dictionary-style
+        lookup. For example:
+
+            new_rolne = my_var.find("test", "zoom", 4)
+
+        is effectively the same as:
+
+            new_rolne = my_var["test", "zoom", 4]
+
+        The biggest difference is that if entry at ["test", "zoom", 4] does
+        not exist, the dictionary-style lookup generates a key error. Whereas
+        this method simply returns None.
+
+        Example of use:
+
+        >>> # setup an example rolne first
+        >>> my_var = rolne()
+        >>> my_var.append("item", "zing")
+        >>> my_var["item", "zing"].append("size", "4")
+        >>> my_var["item", "zing"].append("color", "red")
+        >>> my_var["item", "zing"]["color", "red"].append("intensity", "44%")
+        >>> my_var["item", "zing"].append("reverse", None)
+        >>> my_var.append("item", "broom")
+        >>> my_var["item", "broom", -1].append("size", "1")
+        >>> my_var["item", "broom", -1].append("title", 'The "big" thing')
+        >>> my_var.append("item", "broom")
+        >>> my_var["item", "broom", -1].append("size", "2")
+        >>> my_var["item", "broom", -1].append("title", 'Other thing')
+        >>> my_var.append("code_seq")
+        >>> my_var["code_seq", None].append("*", "r9")
+        >>> my_var["code_seq", None].append("*", "r3")
+        >>> my_var["code_seq", None].append("*", "r2")
+        >>> my_var["code_seq", None].append("*", "r3")
+        >>> my_var.append("system_title", "hello")
+        >>> #
+        >>> print my_var.find("item","broom",1)
+        <rolne datatype object
+        size 2
+        title Other thing
+        >
+        >>> print my_var.find("item","broom",2)
+        None
+        >>> print my_var["code_seq", None].find("*","r3")
+        <rolne datatype object
+        None
+        >
+
+        .. versionadded:: 0.1.2
+        
+        :param name:
+           The key name of the name/value pair.
+        :param value:
+           The key value of the name/value pair. If not passed, then the value
+           is assumed to be empty (None).
+        :param index:
+           The index of the name/value pair. if not passed, then the index is
+           assumed to be 0.
+        :returns:
+           Returns either a rolne that points to the located entry or None if
+           that entry is not found.
+        """
+        try:
+            return self.__getitem__(argv)
+        except KeyError:
+            return None
+        return None
 
     def mards(self):
         result = ""
@@ -198,13 +265,97 @@ class rolne(object):
         return result
 
     def append(self, name, value=None, sublist=None):
+        """Add one name/value entry to the main context of the rolne.
+
+        Example of use:
+
+        >>> # setup an example rolne first
+        >>> my_var = rolne()
+        >>> my_var.append("item", "zing")
+        >>> my_var["item", "zing", -1].append("size", "4")
+        >>> my_var["item", "zing", -1].append("color", "red")
+        >>> print my_var
+        <rolne datatype object
+        item zing
+            size 4
+            color red
+        >
+        >>> my_var.append("item", "zing")
+        >>> my_var["item", "zing", -1].append("size", "2")
+        >>> my_var["item", "zing", -1].append("color", "blue")
+        >>> print my_var
+        <rolne datatype object
+        item zing
+            size 4
+            color red
+        item zing
+            size 2
+            color blue
+        >
+
+        .. versionadded:: 0.1.1
+        
+        :param name:
+           The key name of the name/value pair.
+        :param value:
+           The key value of the name/value pair. If not passed, then the value
+           is assumed to be None.
+        :param sublist:
+           An optional parameter that also appends a subtending list of entries.
+           It is not recommended that this parameter be used.
+        """
         if sublist is None:
             sublist = []
         new_tuple = (name, value, sublist)
         self.data.append(new_tuple)
-        return True
 
     def append_index(self, name, value=None, sublist=None):
+        """Add one name/value entry to the main context of the rolne and
+        return the index number for the new entry.
+
+        Example of use:
+
+        >>> # setup an example rolne first
+        >>> my_var = rolne()
+        >>> index = my_var.append_index("item", "zing")
+        >>> print index
+        0
+        >>> my_var["item", "zing", index].append("size", "4")
+        >>> my_var["item", "zing", index].append("color", "red")
+        >>> print my_var
+        <rolne datatype object
+        item zing
+            size 4
+            color red
+        >
+        >>> index = my_var.append_index("item", "zing")
+        >>> print index
+        1
+        >>> my_var["item", "zing", index].append("size", "2")
+        >>> my_var["item", "zing", index].append("color", "blue")
+        >>> print my_var
+        <rolne datatype object
+        item zing
+            size 4
+            color red
+        item zing
+            size 2
+            color blue
+        >
+
+        .. versionadded:: 0.1.4
+        
+        :param name:
+           The key name of the name/value pair.
+        :param value:
+           The key value of the name/value pair. If not passed, then the value
+           is assumed to be None.
+        :param sublist:
+           An optional parameter that also appends a subtending list of entries.
+           It is not recommended that this parameter be used.
+        :returns:
+           An integer representing the index of the newly inserted name/pair.
+        """
         if sublist is None:
             sublist = []
         new_tuple = (name, value, sublist)
@@ -212,18 +363,65 @@ class rolne(object):
         index = len(self.get_list(name, value)) - 1
         return index
 
-
     def upsert(self, name, value=None):
+        """Add one name/value entry to the main context of the rolne, but
+        only if an entry with that name does not already exist.
+
+        If the an entry with name exists, then the first entry found has it's
+        value changed.
+
+        NOTE: the upsert only updates the FIRST entry with the name found.
+
+        The method returns True if an insertion occurs, otherwise False.
+
+        Example of use:
+
+        >>> # setup an example rolne first
+        >>> my_var = rolne()
+        >>> my_var.upsert("item", "zing")
+        True
+        >>> my_var["item", "zing"].append("color", "blue")
+        >>> print my_var
+        <rolne datatype object
+        item zing
+            color blue
+        >
+        >>> my_var.upsert("item", "zing")
+        False
+        >>> print my_var
+        <rolne datatype object
+        item zing
+            color blue
+        >
+        >>> my_var.upsert("item", "broom")
+        False
+        >>> print my_var
+        <rolne datatype object
+        item broom
+            color blue
+        >
+
+        .. versionadded:: 0.1.1
+        
+        :param name:
+           The key name of the name/value pair.
+        :param value:
+           The key value of the name/value pair. If not passed, then the value
+           is assumed to be None.
+        :returns:
+           Returns True if the name/value was newly inserted. Otherwise, it
+           returns False indicated that an update was done instead.
+        """
         new_tuple = (name, value, [])
-        for entry in self.data:
+        for ctr, entry in enumerate(self.data):
             if entry[TNAME]==name:
-                if entry[TVALUE]==value:
-                    return False
+                new_tuple = (name, value, entry[TLIST])
+                self.data[ctr]=new_tuple
+                return False
         self.data.append(new_tuple)
         return True
 
     def get_list(self, *args):
-        #         name=None):
         arg_count = len(args)
         result = []
         ctr = 0
@@ -249,12 +447,50 @@ class rolne(object):
             result.append(entry[TNAME])
         return result
 
-    def get_tuples(self, name=None):
+    def get_tuples(self, *args):
+        arg_count = len(args)
         result = []
+        ctr = 0
         for entry in self.data:
-            if (entry[TNAME]==name) or (name is None):
+            if arg_count==0:
                 result.append((entry[TNAME], entry[TVALUE]))
+            if arg_count==1:
+                if entry[TNAME]==args[0]:
+                    result.append((entry[TNAME], entry[TVALUE]))
+            if arg_count==2:
+                if entry[TNAME]==args[0] and entry[TVALUE]==args[1]:
+                    result.append((entry[TNAME], entry[TVALUE]))
+            if arg_count==3:
+                if entry[TNAME]==args[0] and entry[TVALUE]==args[1]:
+                    if ctr==args[2]:
+                        result.append((entry[TNAME], entry[TVALUE]))
+                    ctr += 1
         return result
+
+
+    def keys(self, *args):
+        arg_count = len(args)
+        result = []
+        ctr = {}
+        for entry in self.data:
+            if (entry[TNAME], entry[TVALUE]) in ctr:
+                ctr[(entry[TNAME], entry[TVALUE])] += 1
+            else:
+                ctr[(entry[TNAME], entry[TVALUE])] = 0
+            if arg_count==0:
+                result.append((entry[TNAME], entry[TVALUE], ctr[(entry[TNAME], entry[TVALUE])]))
+            if arg_count==1:
+                if entry[TNAME]==args[0]:
+                    result.append((entry[TNAME], entry[TVALUE], ctr[(entry[TNAME], entry[TVALUE])]))
+            if arg_count==2:
+                if entry[TNAME]==args[0] and entry[TVALUE]==args[1]:
+                    result.append((entry[TNAME], entry[TVALUE], ctr[(entry[TNAME], entry[TVALUE])]))
+            if arg_count==3:
+                if entry[TNAME]==args[0] and entry[TVALUE]==args[1]:
+                    if ctr[(entry[TNAME], entry[TVALUE])]==args[2]:
+                        result.append((entry[TNAME], entry[TVALUE], ctr[(entry[TNAME], entry[TVALUE])]))
+        return result
+
         
     def value(self, name):
         for (en, ev, el) in self.data:
@@ -292,7 +528,7 @@ class rolne(object):
     
 if __name__ == "__main__":
 
-    if True:
+    if False:
 
         my_var = rolne()
         my_var.upsert("item", "zing")
@@ -325,22 +561,27 @@ if __name__ == "__main__":
         #print "aa", my_var["zoom_flag"]
         #print "b", my_var["code_seq"]
         #print "bb", my_var.find("code_seq")
-        print "c1", my_var.get_list()
-        print "c2", my_var.get_list("item")
-        print "c3", my_var.get_list("item", "broom")
-        print "c4", my_var.get_list("item", "broom", 2)
-        print "c5", my_var.get_list("item", "broom", 9)
+        print "c1", my_var.keys()
+        print "c2", my_var.keys("item")
+        print "c3", my_var.keys("item", "broom")
+        print "c4", my_var.keys("item", "broom", 2)
+        print "c5", my_var.keys("item", "broom", 9)
         #my_var["code_seq"]["*", "r9"] = 'zings'
         #print "d", my_var
         #print "e", my_var["item", "bam"].value("size")
         #my_var["item", "zing"].reset_value("color", "white")
         #print "f", my_var
         #print "g", my_var["item", "broom", -1]
-        print my_var.append_index("item", "broom")
-        print my_var
+        #print my_var.append_index("item", "broom")
+        #print my_var
 
     else:
         print "==================================="
         print
         import doctest
         print "Testing begins. Errors found:"
+        print doctest.run_docstring_examples(rolne.find, None)
+        print doctest.run_docstring_examples(rolne.append, None)
+        print doctest.run_docstring_examples(rolne.append_index, None)
+        print doctest.run_docstring_examples(rolne.upsert, None)
+        

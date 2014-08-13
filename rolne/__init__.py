@@ -2,13 +2,36 @@
 #
 # rolne datatype class: Recursive Ordered List of Named Elements
 #
-# Version 0.1.5
+# Version 0.1.6
     
 import copy
 
 TNAME = 0
 TVALUE = 1
 TLIST = 2
+TSEQ = 3
+NS = 101
+
+'''
+Internal Notes:
+
+    self.data is the actual place where the rolne data is stored.
+    It is a list of tuples, where each tuple is:
+    
+          (name, value, list, seq)
+          
+    where:
+    
+        name is a string; part of the name/value pair being stored
+        value is a string; part of the name/value pair being stored
+        list is any subtending data under the name/value pair. Essentially
+            is is another list of tuples.
+        seq is a tracking string for historic and diagnostic data
+
+    There are 4 globals in the doc: TNAME, TVALUE, TLIST, TSEQ to make the
+    numeric index of each of these tuple elements easier to read.
+        
+'''
 
 class rolne(object):
 
@@ -18,11 +41,20 @@ class rolne(object):
         else:
             self.data = in_list
 
-    def __str__(self):
-        result = "<rolne datatype object\n"
-        result += self.mards()
-        result += ">"
+    def __str__(self, detail=False):
+        result = ""
+        if detail:
+            result += "<rolne datatype object:\n"
+        else:
+            result += "%rolne:\n"
+        result += self.mards(detail=detail)
+        if detail:
+            result += ">"
         return result
+
+    def _explicit(self):
+        return self.__str__(detail=True)
+
 
     def __len__(self):
         return len(self.data)
@@ -80,7 +112,7 @@ class rolne(object):
                         raise KeyError, repr(tup.stop)+" not found"
                 else:
                     raise KeyError, repr(tup.start)+" not found"
-            return rolne(in_list=new_list)
+            return rolne(new_list)
         else:
             if not isinstance(tup, tuple):
                 tup = (tup, None)
@@ -98,10 +130,10 @@ class rolne(object):
             else:
                 search_data = enumerate(self.data)
             for i, entry in search_data:
-                if entry[0]==name:
-                    if entry[1]==value:
+                if entry[TNAME]==name:
+                    if entry[TVALUE]==value:
                         if start_ctr==index:
-                            return(rolne(self.data[i][2]))
+                            return(rolne(self.data[i][TLIST]))
                         else:
                             start_ctr += 1
         raise KeyError, repr(tup)+" not found"
@@ -109,30 +141,37 @@ class rolne(object):
 
     def __setitem__(self, tup, value):
         if not isinstance(tup, tuple):
-            tup = (tup, None)
+            tup = tuple([tup])
+        arglen = len(tup)
         (name, cur_value, index) = (None, None, 0)
         index_flag = False
-        if len(tup)>0:
-            name = tup[0]
-        if len(tup)>1:
-            cur_value = tup[1]
-        if len(tup)>2:
+        if arglen==1:
+            name = tup[TNAME]
+        elif arglen==2:
+            name = tup[TNAME]
+            cur_value = tup[TVALUE]
+        elif arglen==3:
+            name = tup[TNAME]
+            cur_value = tup[TVALUE]
             index = tup[2]
-            index_flag = True
+        elif arglen==0:
+            raise KeyError, repr(tup)+" is empty"
+        else:
+            raise KeyError, repr(tup)+" has too many items"
         start_ctr = 0
-        for i,(entry_name, entry_value, entry_list) in enumerate(self.data):
+        for i,(entry_name, entry_value, entry_list, entry_seq) in enumerate(self.data):
             if entry_name==name:
-                if entry_value==cur_value:
+                if entry_value==cur_value or arglen==1:
                     if start_ctr==index:
-                        new_tuple = (entry_name, value, entry_list)
+                        new_tuple = (entry_name, value, entry_list, entry_seq)
                         self.data[i] = new_tuple
                         return True
                     else:
                         start_ctr += 1
-        if index_flag:
+        if arglen==3:
             raise KeyError, repr(tup)+" not found"
         else:
-            self.upsert(name, value)
+            self.append(name, value)
         return True
 
     def __contains__(self, target):
@@ -164,6 +203,15 @@ class rolne(object):
         for entry in self.data:
             x = rolne([entry])
             yield x
+
+    def _seq(self, seq=None):
+        global NS
+        if seq:
+            result = str(seq)
+        else:
+            result = str(NS)
+            NS += 1
+        return result
 
     def find(self, *argv):
         """Locate a single rolne entry.
@@ -204,16 +252,16 @@ class rolne(object):
         >>> my_var.append("system_title", "hello")
         >>> #
         >>> print my_var.find("item","broom",1)
-        <rolne datatype object
+        %rolne:
         size 2
         title Other thing
-        >
+        <BLANKLINE>
         >>> print my_var.find("item","broom",2)
         None
         >>> print my_var["code_seq", None].find("*","r3")
-        <rolne datatype object
-        None
-        >
+        %rolne:
+        %empty
+        <BLANKLINE>
 
         .. versionadded:: 0.1.2
         
@@ -235,36 +283,37 @@ class rolne(object):
             return None
         return None
 
-    def mards(self):
+    def mards(self, detail=False):
         result = ""
         # return repr(self.data)
         if self.data:
             for entry in self.data:
-                result += entry[0]
-                if entry[1] is not None:
-                    printable = str(entry[1])
+                if detail==True:
+                    result += "[{}] ".format(str(entry[TSEQ]))
+                result += str(entry[TNAME])
+                if entry[TVALUE] is not None:
+                    printable = str(entry[TVALUE])
                     quote_flag = False
                     if '"' in printable:
                         quote_flag = True
                     if len(printable) != len(printable.strip()):
                         quote_flag = True
                     if quote_flag:
-                        result += " "+'"'+str(entry[1])+'"'
+                        result += " "+'"'+str(entry[TVALUE])+'"'
                     else:
-                        result += " "+str(entry[1])
+                        result += " "+str(entry[TVALUE])
                 result += "\n"
-                if entry[2]:
-                    # result += "*"
-                    temp = rolne(entry[2]).mards()
+                if entry[TLIST]:
+                    temp = rolne(entry[TLIST]).mards(detail=detail)
                     for line in temp.split("\n"):
                         if line:
                             result += "    "+line
                             result += "\n"
         else:
-            result = "None\n"
+            result = "%empty\n"
         return result
 
-    def append(self, name, value=None, sublist=None):
+    def append(self, name, value=None, sublist=None, seq=None):
         """Add one name/value entry to the main context of the rolne.
 
         Example of use:
@@ -275,23 +324,23 @@ class rolne(object):
         >>> my_var["item", "zing", -1].append("size", "4")
         >>> my_var["item", "zing", -1].append("color", "red")
         >>> print my_var
-        <rolne datatype object
+        %rolne:
         item zing
             size 4
             color red
-        >
+        <BLANKLINE>
         >>> my_var.append("item", "zing")
         >>> my_var["item", "zing", -1].append("size", "2")
         >>> my_var["item", "zing", -1].append("color", "blue")
         >>> print my_var
-        <rolne datatype object
+        %rolne:
         item zing
             size 4
             color red
         item zing
             size 2
             color blue
-        >
+        <BLANKLINE>
 
         .. versionadded:: 0.1.1
         
@@ -306,10 +355,10 @@ class rolne(object):
         """
         if sublist is None:
             sublist = []
-        new_tuple = (name, value, sublist)
+        new_tuple = (name, value, sublist, self._seq(seq))
         self.data.append(new_tuple)
 
-    def append_index(self, name, value=None, sublist=None):
+    def append_index(self, name, value=None, sublist=None, seq=None):
         """Add one name/value entry to the main context of the rolne and
         return the index number for the new entry.
 
@@ -323,25 +372,25 @@ class rolne(object):
         >>> my_var["item", "zing", index].append("size", "4")
         >>> my_var["item", "zing", index].append("color", "red")
         >>> print my_var
-        <rolne datatype object
+        %rolne:
         item zing
             size 4
             color red
-        >
+        <BLANKLINE>
         >>> index = my_var.append_index("item", "zing")
         >>> print index
         1
         >>> my_var["item", "zing", index].append("size", "2")
         >>> my_var["item", "zing", index].append("color", "blue")
         >>> print my_var
-        <rolne datatype object
+        %rolne:
         item zing
             size 4
             color red
         item zing
             size 2
             color blue
-        >
+        <BLANKLINE>
 
         .. versionadded:: 0.1.4
         
@@ -358,12 +407,12 @@ class rolne(object):
         """
         if sublist is None:
             sublist = []
-        new_tuple = (name, value, sublist)
+        new_tuple = (name, value, sublist, self._seq(seq))
         self.data.append(new_tuple)
         index = len(self.get_list(name, value)) - 1
         return index
 
-    def upsert(self, name, value=None):
+    def upsert(self, name, value=None, seq=None):
         """Add one name/value entry to the main context of the rolne, but
         only if an entry with that name does not already exist.
 
@@ -382,24 +431,24 @@ class rolne(object):
         True
         >>> my_var["item", "zing"].append("color", "blue")
         >>> print my_var
-        <rolne datatype object
+        %rolne:
         item zing
             color blue
-        >
+        <BLANKLINE>
         >>> my_var.upsert("item", "zing")
         False
         >>> print my_var
-        <rolne datatype object
+        %rolne:
         item zing
             color blue
-        >
+        <BLANKLINE>
         >>> my_var.upsert("item", "broom")
         False
         >>> print my_var
-        <rolne datatype object
+        %rolne:
         item broom
             color blue
-        >
+        <BLANKLINE>
 
         .. versionadded:: 0.1.1
         
@@ -412,12 +461,12 @@ class rolne(object):
            Returns True if the name/value was newly inserted. Otherwise, it
            returns False indicated that an update was done instead.
         """
-        new_tuple = (name, value, [])
         for ctr, entry in enumerate(self.data):
             if entry[TNAME]==name:
-                new_tuple = (name, value, entry[TLIST])
+                new_tuple = (name, value, entry[TLIST], entry[TSEQ])
                 self.data[ctr]=new_tuple
                 return False
+        new_tuple = (name, value, [], self._seq(seq))
         self.data.append(new_tuple)
         return True
 
@@ -491,11 +540,48 @@ class rolne(object):
                         result.append((entry[TNAME], entry[TVALUE], ctr[(entry[TNAME], entry[TVALUE])]))
         return result
 
+
+
+    def dump(self, *args):
+        arg_count = len(args)
+        result = []
+        ctr = {}
+        for entry in self.data:
+            if (entry[TNAME], entry[TVALUE]) in ctr:
+                ctr[(entry[TNAME], entry[TVALUE])] += 1
+            else:
+                ctr[(entry[TNAME], entry[TVALUE])] = 0
+            tup = (entry[TNAME], entry[TVALUE], ctr[(entry[TNAME], entry[TVALUE])], entry[TSEQ])
+            if arg_count==0:
+                result.append(tup)
+            if arg_count==1:
+                if entry[TNAME]==args[0]:
+                    result.append(tup)
+            if arg_count==2:
+                if entry[TNAME]==args[0] and entry[TVALUE]==args[1]:
+                    result.append(tup)
+            if arg_count==3:
+                if entry[TNAME]==args[0] and entry[TVALUE]==args[1]:
+                    if ctr[(entry[TNAME], entry[TVALUE])]==args[2]:
+                        result.append(tup)
+        return result
+
         
     def value(self, name):
-        for (en, ev, el) in self.data:
+        for (en, ev, el, es) in self.data:
             if en==name:
                 return ev
+        return None
+
+    def seq(self, name, value, index=None):
+        if index is None:
+            index=0
+        ctr = 0
+        for (en, ev, el, es) in self.data:
+            if en==name and ev==value:
+                if ctr==index:
+                    return es
+                ctr += 1
         return None
 
     def summarize(self, name, *args):
@@ -509,38 +595,38 @@ class rolne(object):
             value_missing = True
         value_list = []
         summary = []
-        for (en, ev, el) in self.data:
+        for (en, ev, el, es) in self.data:
             if en==name:
                 if value_missing or ev==value:
                     value_list.append(ev)
-                    summary.append((en, ev, el))
+                    summary.append((en, ev, el, es))
         return (name, value_list, rolne(in_list = summary))
 
     def filter(self, *argv):
         return self.summarize(*argv)[2]
 
 
-    def reset_value(self, name, value):
-        for (en, ev, el) in self.data:
-            if en==name:
-                return self.__setitem__((en, ev), value)
-        return False
+    #def reset_value(self, *argv):
+    #    for (en, ev, el, es) in self.data:
+    #        if en==name:
+    #            return self.__setitem__(argv, value)
+    #    return False
     
 if __name__ == "__main__":
 
-    if False:
+    if True:
 
         my_var = rolne()
-        my_var.upsert("item", "zing")
+        my_var.append("item", "zing")
         my_var["item", "zing"].upsert("size", "4")
         my_var["item", "zing"].upsert("color", "red")
         my_var["item", "zing"]["color", "red"].upsert("intensity", "44%")
         my_var["item", "zing"].upsert("color", "yellow")
-        my_var.upsert("item", "womp")
+        my_var.append("item", "womp")
         my_var["item", "womp"].upsert("size", "5")
         my_var["item", "womp"].upsert("color", "blue")
-        my_var.upsert("item", "bam")
-        my_var.upsert("item", "broom")
+        my_var.append("item", "bam")
+        my_var.append("item", "broom")
         my_var["item", "broom", -1].upsert("size", "1")
         my_var["item", "broom", -1].upsert("title", 'The "big" thing')
         my_var.append("item", "broom")
@@ -550,30 +636,31 @@ if __name__ == "__main__":
         my_var["item", "broom", -1].upsert("size", "3")
         my_var["item", "broom", -1].upsert("title", 'The "big" thing')
         my_var.upsert("zoom_flag")
-        my_var.upsert("code_seq")
-        my_var["code_seq", None].append("*", "r9")
+        my_var.upsert("code_seq", seq="ln1")
+        my_var["code_seq", None].append("*", "r9", seq="ln2")
         my_var["code_seq", None].append("*", "r3")
         my_var["code_seq", None].append("*", "r2")
         my_var["code_seq", None].append("*", "r3")
         my_var.upsert("system_title", "hello")
 
-        print "a", my_var
+        print "a", my_var._explicit()
         #print "aa", my_var["zoom_flag"]
         #print "b", my_var["code_seq"]
         #print "bb", my_var.find("code_seq")
-        print "c1", my_var.keys()
-        print "c2", my_var.keys("item")
-        print "c3", my_var.keys("item", "broom")
-        print "c4", my_var.keys("item", "broom", 2)
-        print "c5", my_var.keys("item", "broom", 9)
-        #my_var["code_seq"]["*", "r9"] = 'zings'
-        #print "d", my_var
-        #print "e", my_var["item", "bam"].value("size")
-        #my_var["item", "zing"].reset_value("color", "white")
+        #print "c1", my_var.dump()
+        #print "c2", my_var.dump("item")
+        #print "c3", my_var.dump("item", "broom")
+        #print "c4", my_var.dump("item", "broom", 2)
+        #print "c5", my_var.dump("item", "broom", 9)
+        #my_var["code_seq"]["*", None] = 'zings'
+        #print "d", my_var._explicit()
+        #print "e", my_var["item", "zing"].value("size")
         #print "f", my_var
         #print "g", my_var["item", "broom", -1]
         #print my_var.append_index("item", "broom")
-        #print my_var
+        #print my_var._explicit()
+        print my_var.seq("item", "broom")
+        print my_var.seq("item", "broom", 2)
 
     else:
         print "==================================="

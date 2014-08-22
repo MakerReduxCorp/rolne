@@ -2,7 +2,7 @@
 #
 # rolne datatype class: Recursive Ordered List of Named Elements
 #
-# Version 0.1.6
+# Version 0.1.7
     
 import copy
 
@@ -173,6 +173,37 @@ class rolne(object):
         else:
             self.append(name, value)
         return True
+
+    def __delitem__(self, tup):
+        if not isinstance(tup, tuple):
+            tup = tuple([tup])
+        arglen = len(tup)
+        (name, value, index) = (None, None, 0)
+        index_flag = False
+        if arglen==1:
+            name = tup[TNAME]
+        elif arglen==2:
+            name = tup[TNAME]
+            value = tup[TVALUE]
+        elif arglen==3:
+            name = tup[TNAME]
+            value = tup[TVALUE]
+            index = tup[2]
+        elif arglen==0:
+            raise KeyError, repr(tup)+" is empty"
+        else:
+            raise KeyError, repr(tup)+" has too many items"
+        start_ctr = 0
+        for i,(entry_name, entry_value, entry_list, entry_seq) in enumerate(self.data):
+            if entry_name==name:
+                if entry_value==value or arglen==1:
+                    if start_ctr==index:
+                        del self.data[i]
+                        return
+                    else:
+                        start_ctr += 1
+        raise KeyError, repr(tup)+" not found"
+
 
     def __contains__(self, target):
         target_value_missing = True
@@ -518,40 +549,32 @@ class rolne(object):
 
 
     def keys(self, *args):
+        return self.dump_list(args, name=True, value=True, index=True)
+
+    def dump_list(self, args, name=False, value=True, index=False, seq=False):
+        if not isinstance(args, tuple):
+            args = tuple([args])
         arg_count = len(args)
         result = []
         ctr = {}
         for entry in self.data:
+            # the counter function
             if (entry[TNAME], entry[TVALUE]) in ctr:
                 ctr[(entry[TNAME], entry[TVALUE])] += 1
             else:
                 ctr[(entry[TNAME], entry[TVALUE])] = 0
-            if arg_count==0:
-                result.append((entry[TNAME], entry[TVALUE], ctr[(entry[TNAME], entry[TVALUE])]))
-            if arg_count==1:
-                if entry[TNAME]==args[0]:
-                    result.append((entry[TNAME], entry[TVALUE], ctr[(entry[TNAME], entry[TVALUE])]))
-            if arg_count==2:
-                if entry[TNAME]==args[0] and entry[TVALUE]==args[1]:
-                    result.append((entry[TNAME], entry[TVALUE], ctr[(entry[TNAME], entry[TVALUE])]))
-            if arg_count==3:
-                if entry[TNAME]==args[0] and entry[TVALUE]==args[1]:
-                    if ctr[(entry[TNAME], entry[TVALUE])]==args[2]:
-                        result.append((entry[TNAME], entry[TVALUE], ctr[(entry[TNAME], entry[TVALUE])]))
-        return result
-
-
-
-    def dump(self, *args):
-        arg_count = len(args)
-        result = []
-        ctr = {}
-        for entry in self.data:
-            if (entry[TNAME], entry[TVALUE]) in ctr:
-                ctr[(entry[TNAME], entry[TVALUE])] += 1
-            else:
-                ctr[(entry[TNAME], entry[TVALUE])] = 0
-            tup = (entry[TNAME], entry[TVALUE], ctr[(entry[TNAME], entry[TVALUE])], entry[TSEQ])
+            # make the tuple
+            items = []
+            if name:
+                items.append(entry[TNAME])
+            if value:
+                items.append(entry[TVALUE])
+            if index:
+                items.append(ctr[(entry[TNAME], entry[TVALUE])])
+            if seq:
+                items.append(entry[TSEQ])
+            tup = tuple(items)
+            # insert as dictated by args given
             if arg_count==0:
                 result.append(tup)
             if arg_count==1:
@@ -566,6 +589,15 @@ class rolne(object):
                         result.append(tup)
         return result
 
+    def dump(self):
+        return self._dump(self.data)
+
+    def _dump(self, data):
+        result = []
+        for entry in data:
+            tup = (entry[TNAME], entry[TVALUE], self._dump(entry[TLIST]))
+            result.append(tup)
+        return result
         
     def value(self, name):
         for (en, ev, el, es) in self.data:
@@ -605,13 +637,6 @@ class rolne(object):
     def filter(self, *argv):
         return self.summarize(*argv)[2]
 
-
-    #def reset_value(self, *argv):
-    #    for (en, ev, el, es) in self.data:
-    #        if en==name:
-    #            return self.__setitem__(argv, value)
-    #    return False
-    
 if __name__ == "__main__":
 
     if True:
@@ -647,20 +672,21 @@ if __name__ == "__main__":
         #print "aa", my_var["zoom_flag"]
         #print "b", my_var["code_seq"]
         #print "bb", my_var.find("code_seq")
-        #print "c1", my_var.dump()
-        #print "c2", my_var.dump("item")
-        #print "c3", my_var.dump("item", "broom")
-        #print "c4", my_var.dump("item", "broom", 2)
-        #print "c5", my_var.dump("item", "broom", 9)
+        print "c1", my_var.dump_list( ( ), name=True, value=True, index=True, seq=True)
+        #print "c2", my_var.get( ("item"), name=True, value=True, index=True, seq=True)
+        #print "c3", my_var.get( ("item", "broom"), name=True, value=True, index=True, seq=True)
+        #print "c4", my_var.get( ("item", "broom", 2), name=True, value=True, index=True, seq=True)
+        #print "c5", my_var.get( ("item", "broom", 9), name=True, value=True, index=True, seq=True)
+        print "c6", my_var.keys("item", "broom")
         #my_var["code_seq"]["*", None] = 'zings'
         #print "d", my_var._explicit()
         #print "e", my_var["item", "zing"].value("size")
         #print "f", my_var
         #print "g", my_var["item", "broom", -1]
         #print my_var.append_index("item", "broom")
-        #print my_var._explicit()
-        print my_var.seq("item", "broom")
-        print my_var.seq("item", "broom", 2)
+        #del my_var["item"]
+        #print "z",my_var._explicit()
+        print "z2",my_var.dump()
 
     else:
         print "==================================="

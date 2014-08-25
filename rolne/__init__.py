@@ -2,7 +2,7 @@
 #
 # rolne datatype class: Recursive Ordered List of Named Elements
 #
-# Version 0.1.8
+# Version 0.1.9
     
 import copy
 
@@ -547,7 +547,6 @@ class rolne(object):
                     ctr += 1
         return result
 
-
     def keys(self, *args):
         return self.dump_list(args, name=True, value=True, index=True)
 
@@ -589,6 +588,50 @@ class rolne(object):
                         result.append(tup)
         return result
 
+        
+    def flattened_list(self, args, name=False, value=True, index=False, seq=False):
+        if not isinstance(args, tuple):
+            args = tuple([args])
+        return self._flattened_list(self.data, args, name=name, value=value, index=index, seq=seq)
+
+    def _flattened_list(self, data, args, name, value, index, seq):
+        arg_count = len(args)
+        result = []
+        ctr = {}
+        for entry in data:
+            # the counter function
+            if (entry[TNAME], entry[TVALUE]) in ctr:
+                ctr[(entry[TNAME], entry[TVALUE])] += 1
+            else:
+                ctr[(entry[TNAME], entry[TVALUE])] = 0
+            # make the tuple
+            items = []
+            if name:
+                items.append(entry[TNAME])
+            if value:
+                items.append(entry[TVALUE])
+            if index:
+                items.append(ctr[(entry[TNAME], entry[TVALUE])])
+            if seq:
+                items.append(entry[TSEQ])
+            tup = tuple(items)
+            # insert as dictated by args given
+            if arg_count==0:
+                result.append(tup)
+            if arg_count==1:
+                if entry[TNAME]==args[0]:
+                    result.append(tup)
+            if arg_count==2:
+                if entry[TNAME]==args[0] and entry[TVALUE]==args[1]:
+                    result.append(tup)
+            if arg_count==3:
+                if entry[TNAME]==args[0] and entry[TVALUE]==args[1]:
+                    if ctr[(entry[TNAME], entry[TVALUE])]==args[2]:
+                        result.append(tup)
+            if entry[TLIST]:
+                result.extend(self._flattened_list( entry[TLIST], args, name, value, index, seq) )
+        return result
+        
     def dump(self):
         return self._dump(self.data)
 
@@ -672,12 +715,13 @@ if __name__ == "__main__":
         #print "aa", my_var["zoom_flag"]
         #print "b", my_var["code_seq"]
         #print "bb", my_var.find("code_seq")
-        print "c1", my_var.dump_list( ( ), name=True, value=True, index=True, seq=True)
+        #print "c1", my_var.dump_list( ( ), name=True, value=True, index=True, seq=True)
+        print "cz", my_var.flattened_list( ("title"), name=True, value=True, index=True, seq=True)
         #print "c2", my_var.get( ("item"), name=True, value=True, index=True, seq=True)
         #print "c3", my_var.get( ("item", "broom"), name=True, value=True, index=True, seq=True)
         #print "c4", my_var.get( ("item", "broom", 2), name=True, value=True, index=True, seq=True)
         #print "c5", my_var.get( ("item", "broom", 9), name=True, value=True, index=True, seq=True)
-        print "c6", my_var.keys("item", "broom")
+        #print "c6", my_var.keys("item", "broom")
         #my_var["code_seq"]["*", None] = 'zings'
         #print "d", my_var._explicit()
         #print "e", my_var["item", "zing"].value("size")
@@ -686,7 +730,7 @@ if __name__ == "__main__":
         #print my_var.append_index("item", "broom")
         #del my_var["item"]
         #print "z",my_var._explicit()
-        print "z2",my_var.dump()
+        #print "z2",my_var.dump()
 
     else:
         print "==================================="

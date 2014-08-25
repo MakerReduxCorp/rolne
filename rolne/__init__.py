@@ -680,6 +680,34 @@ class rolne(object):
     def filter(self, *argv):
         return self.summarize(*argv)[2]
 
+    #TODO
+    def at_seq(self, seq=None):
+        # return the rolne located with the seq
+        return self._at_seq(self.data, seq)
+        
+    def _at_seq(self, data, seq):
+        result = None
+        for (en, ev, el, es) in data:
+            if es==seq:
+                print "found", es
+                if el:
+                    return rolne(in_list=copy.deepcopy(el))
+                else:
+                    return rolne()
+                #new_list = [(en, ev, copy.deepcopy(el), es)]
+                #return rolne(in_list=new_list)
+            if el:
+                result = self._at_seq(el, seq)
+            if result:
+                return result
+        return None
+
+    #TODO
+    def replace_at_seq(self, seq, source_rolne):
+        # this is an interesting one: given a seq number, everything
+        # is replaced with a deep COPY of the source_rolne
+        return None
+    
 if __name__ == "__main__":
 
     if True:
@@ -716,7 +744,7 @@ if __name__ == "__main__":
         #print "b", my_var["code_seq"]
         #print "bb", my_var.find("code_seq")
         #print "c1", my_var.dump_list( ( ), name=True, value=True, index=True, seq=True)
-        print "cz", my_var.flattened_list( ("title"), name=True, value=True, index=True, seq=True)
+        #print "cz", my_var.flattened_list( ("title"), name=True, value=True, index=True, seq=True)
         #print "c2", my_var.get( ("item"), name=True, value=True, index=True, seq=True)
         #print "c3", my_var.get( ("item", "broom"), name=True, value=True, index=True, seq=True)
         #print "c4", my_var.get( ("item", "broom", 2), name=True, value=True, index=True, seq=True)
@@ -727,6 +755,8 @@ if __name__ == "__main__":
         #print "e", my_var["item", "zing"].value("size")
         #print "f", my_var
         #print "g", my_var["item", "broom", -1]
+        new_var = my_var.at_seq("113")
+        print "h2", new_var._explicit()
         #print my_var.append_index("item", "broom")
         #del my_var["item"]
         #print "z",my_var._explicit()

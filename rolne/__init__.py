@@ -2,7 +2,7 @@
 #
 # rolne datatype class: Recursive Ordered List of Named Elements
 #
-# Version 0.1.9
+# Version 0.1.10
     
 import copy
 
@@ -680,33 +680,78 @@ class rolne(object):
     def filter(self, *argv):
         return self.summarize(*argv)[2]
 
-    #TODO
     def at_seq(self, seq=None):
         # return the rolne located with the seq
-        return self._at_seq(self.data, seq)
+        tup = self.ptr_to_seq(seq)
+        if tup is None:
+            return None
+        return rolne(in_list=tup[TLIST])
         
-    def _at_seq(self, data, seq):
-        result = None
-        for (en, ev, el, es) in data:
-            if es==seq:
-                print "found", es
-                if el:
-                    return rolne(in_list=copy.deepcopy(el))
-                else:
-                    return rolne()
-                #new_list = [(en, ev, copy.deepcopy(el), es)]
-                #return rolne(in_list=new_list)
-            if el:
-                result = self._at_seq(el, seq)
-            if result:
-                return result
-        return None
+    def ptr_to_seq(self, seq):
+        # this is an interesting one: return a reference to
+        # the direct tuple with this sequence. Use with care.
+        (target_list, target_index) = self.list_ref_to_seq(seq)
+        if target_list is None:
+            return None
+        return target_list[target_index]
 
-    #TODO
-    def replace_at_seq(self, seq, source_rolne):
-        # this is an interesting one: given a seq number, everything
-        # is replaced with a deep COPY of the source_rolne
-        return None
+    def list_ref_to_seq(self, seq):
+        # this one REALLY jumps down the rabbit hole.
+        #
+        # returns a tuple containing the original list containing the
+        # sequence and the index pointing to the entry that
+        # has the sequence.
+        #
+        # (list, index)
+        #
+        # this is useful for for routines that, in turn, modify
+        # an entry. One cannot "change" a tuple. So a pointer
+        # to a tuple has no value. This combo allows true change
+        # because lists are mutable.
+        #
+        return self._list_ref_to_seq(self.data, seq)
+
+    def _list_ref_to_seq(self, data, seq):
+        result = (None, None)
+        for index, entry in enumerate(data):
+            (en, ev, el, es) = entry
+            if es==seq:
+               return (data, index)
+            if el:
+                result = self._list_ref_to_seq(el, seq)
+                if result[0] is not None:
+                    return result
+        return (None, None)
+
+    def replace_using_seq(self, seq, src_seq, prefix="rep"):
+        # locating the entry with 'seq', replace the contents
+        # of seq with a COPY of the entry seen at src_seq.
+        # the original entry retains it's seq string, but the
+        # name, value, and subtending list all change.
+        # the subtending entries get new seq ids
+        # returns True is successful, else False
+        dest_ref = self.list_ref_to_seq(seq)
+        if dest_ref[0] is None:
+            return False
+        (dest_list, dest_index) = dest_ref
+        ro_dest_tup = dest_list[dest_index]
+        src_tup = self.ptr_to_seq(src_seq)
+        if src_tup is None:
+            return False
+        new_sub_list = self._copy_sublist_with_new_seq(src_tup[TLIST], prefix)
+        new_tup = (copy.deepcopy(src_tup[TNAME]), copy.deepcopy(src_tup[TVALUE]), new_sub_list, ro_dest_tup[TSEQ])
+        dest_list[dest_index] = new_tup
+        return True
+
+    def _copy_sublist_with_new_seq(self, source, prefix):
+        dest = []
+        for (ev, en, el, es) in source:
+            new_seq = prefix+self._seq() # called before next to make seq look logical
+            new_list = self._copy_sublist_with_new_seq(el, prefix)
+            new_tup = (copy.copy(ev), copy.copy(en), new_list, new_seq)
+            dest.append(new_tup)
+        return dest
+
     
 if __name__ == "__main__":
 
@@ -755,11 +800,20 @@ if __name__ == "__main__":
         #print "e", my_var["item", "zing"].value("size")
         #print "f", my_var
         #print "g", my_var["item", "broom", -1]
-        new_var = my_var.at_seq("113")
-        print "h2", new_var._explicit()
+        seq = "115"
+        new_var = my_var.at_seq(seq)
+        if new_var is not None:
+            print "h2", new_var._explicit()
+        else:
+            print "h2", None
+        new_tup = my_var.ptr_to_seq(seq)
+        print "h3", new_tup
+        new_ptr = my_var.list_ref_to_seq(seq)
+        print "h4", new_ptr
+        print "h5",my_var.replace_using_seq(seq, "ln1", "xx")
         #print my_var.append_index("item", "broom")
         #del my_var["item"]
-        #print "z",my_var._explicit()
+        print "z",my_var._explicit()
         #print "z2",my_var.dump()
 
     else:

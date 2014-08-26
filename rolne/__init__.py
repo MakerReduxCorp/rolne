@@ -2,7 +2,7 @@
 #
 # rolne datatype class: Recursive Ordered List of Named Elements
 #
-# Version 0.1.10
+# Version 0.1.11
     
 import copy
 
@@ -723,7 +723,7 @@ class rolne(object):
                     return result
         return (None, None)
 
-    def replace_using_seq(self, seq, src_seq, prefix="rep"):
+    def seq_replace(self, seq, src_seq, prefix="rep"):
         # locating the entry with 'seq', replace the contents
         # of seq with a COPY of the entry seen at src_seq.
         # the original entry retains it's seq string, but the
@@ -752,7 +752,46 @@ class rolne(object):
             dest.append(new_tup)
         return dest
 
-    
+    def seq_lineage(self, seq):
+        # return a parental list of seq that are represented by a seq
+        # TODO add a param to return keys rather than seq
+        return self._seq_lineage(self.data, seq)
+
+    def _seq_lineage(self, data, seq):
+        for index, entry in enumerate(data):
+            (en, ev, el, es) = entry
+            if es==seq:
+               return [es]
+            if el:
+                result = self._seq_lineage(el, seq)
+                if result:
+                    return [es]+result
+        return []
+        
+    def seq_parent(self, seq):
+        # seq of immediate parent
+        the_line = self.seq_lineage(seq)
+        if len(the_line)>1:
+            return the_line[-2]
+        return None
+
+    def seq_progenitor(self, seq):
+        # seq of top ancestor
+        the_line = self.seq_lineage(seq)
+        if the_line:
+            return the_line[0]
+        return None
+
+    def seq_delete(self, seq):
+        # delete the entry pointed to by the sequence
+        ref = self.list_ref_to_seq(seq)
+        if ref[0] is None:
+            return None
+        (rl, ri) = ref
+        del rl[ri]
+        return seq
+
+        
 if __name__ == "__main__":
 
     if True:
@@ -800,21 +839,29 @@ if __name__ == "__main__":
         #print "e", my_var["item", "zing"].value("size")
         #print "f", my_var
         #print "g", my_var["item", "broom", -1]
-        seq = "115"
-        new_var = my_var.at_seq(seq)
-        if new_var is not None:
-            print "h2", new_var._explicit()
-        else:
-            print "h2", None
-        new_tup = my_var.ptr_to_seq(seq)
-        print "h3", new_tup
-        new_ptr = my_var.list_ref_to_seq(seq)
-        print "h4", new_ptr
-        print "h5",my_var.replace_using_seq(seq, "ln1", "xx")
+        seq = "120"
+        #new_var = my_var.at_seq(seq)
+        #if new_var is not None:
+        #    print "h2", new_var._explicit()
+        #else:
+        #    print "h2", None
+        #new_tup = my_var.ptr_to_seq(seq)
+        #print "h3", new_tup
+        #new_ptr = my_var.list_ref_to_seq(seq)
+        #print "h4", new_ptr
+        #print "h5",my_var.replace_using_seq(seq, "ln1", "xx")
+        print "k1 line",my_var.seq_lineage(seq)
+        print "k2 prnt",my_var.seq_parent(seq)
+        print "k3 prog",my_var.seq_progenitor(seq)
+        print "k4  del",my_var.seq_delete(seq)
         #print my_var.append_index("item", "broom")
         #del my_var["item"]
         print "z",my_var._explicit()
         #print "z2",my_var.dump()
+
+        #TODO: add '.del_decendants()'
+        #TODO: add '.del_ancestral_branch()'
+        #TODO: add '.change_name()'
 
     else:
         print "==================================="

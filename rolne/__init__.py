@@ -2,7 +2,7 @@
 #
 # rolne datatype class: Recursive Ordered List of Named Elements
 #
-# Version 0.1.11
+# Version 0.1.12
     
 import copy
 
@@ -791,6 +791,17 @@ class rolne(object):
         del rl[ri]
         return seq
 
+    def copy(self, seq_prefix="copy_", seq_suffix=""):
+        seq_prefix = str(seq_prefix)
+        seq_suffix = str(seq_suffix)
+        return rolne(in_list=self._copy(seq_prefix, seq_suffix, self.data))
+
+    def _copy(self, seq_prefix, seq_suffix, data):
+        new_list = []
+        for (ev, en, el, es) in data:
+            sub = self._copy(seq_prefix, seq_suffix, el)
+            new_list.append((copy.copy(ev), copy.copy(en), sub, seq_prefix+es+seq_suffix))
+        return new_list
         
 if __name__ == "__main__":
 
@@ -825,6 +836,7 @@ if __name__ == "__main__":
 
         print "a", my_var._explicit()
         #print "aa", my_var["zoom_flag"]
+        c_var = my_var.copy(seq_prefix="a", seq_suffix=None)
         #print "b", my_var["code_seq"]
         #print "bb", my_var.find("code_seq")
         #print "c1", my_var.dump_list( ( ), name=True, value=True, index=True, seq=True)
@@ -855,8 +867,9 @@ if __name__ == "__main__":
         print "k3 prog",my_var.seq_progenitor(seq)
         print "k4  del",my_var.seq_delete(seq)
         #print my_var.append_index("item", "broom")
-        #del my_var["item"]
+
         print "z",my_var._explicit()
+        print "z1", c_var._explicit()
         #print "z2",my_var.dump()
 
         #TODO: add '.del_decendants()'

@@ -723,9 +723,12 @@ class rolne(object):
                     return result
         return (None, None)
 
-    def seq_replace(self, seq, src_seq, prefix="rep"):
+    def seq_replace(self, seq, src, prefix="rep"):
         # locating the entry with 'seq', replace the contents
-        # of seq with a COPY of the entry seen at src_seq.
+        # of seq with a COPY of the entry seen at src.
+        # If src is a string, the it is a sequence id of the data
+        #  in the same rolne.
+        # if src is a tuple, then it is a tuple of the new actual data.
         # the original entry retains it's seq string, but the
         # name, value, and subtending list all change.
         # the subtending entries get new seq ids
@@ -735,7 +738,10 @@ class rolne(object):
             return False
         (dest_list, dest_index) = dest_ref
         ro_dest_tup = dest_list[dest_index]
-        src_tup = self.ptr_to_seq(src_seq)
+        if type(src) is tuple:
+            src_tup = src
+        else:
+            src_tup = self.ptr_to_seq(src)
         if src_tup is None:
             return False
         new_sub_list = self._copy_sublist_with_new_seq(src_tup[TLIST], prefix)
@@ -836,7 +842,7 @@ if __name__ == "__main__":
 
         print "a", my_var._explicit()
         #print "aa", my_var["zoom_flag"]
-        c_var = my_var.copy(seq_prefix="a", seq_suffix=None)
+        c_var = my_var.copy()
         #print "b", my_var["code_seq"]
         #print "bb", my_var.find("code_seq")
         #print "c1", my_var.dump_list( ( ), name=True, value=True, index=True, seq=True)
@@ -857,15 +863,15 @@ if __name__ == "__main__":
         #    print "h2", new_var._explicit()
         #else:
         #    print "h2", None
-        #new_tup = my_var.ptr_to_seq(seq)
+        #new_tup = c_var.ptr_to_seq("copy_ln1")
         #print "h3", new_tup
         #new_ptr = my_var.list_ref_to_seq(seq)
         #print "h4", new_ptr
-        #print "h5",my_var.replace_using_seq(seq, "ln1", "xx")
-        print "k1 line",my_var.seq_lineage(seq)
-        print "k2 prnt",my_var.seq_parent(seq)
-        print "k3 prog",my_var.seq_progenitor(seq)
-        print "k4  del",my_var.seq_delete(seq)
+        print "h5",my_var.seq_replace(seq, c_var.ptr_to_seq("copy_ln1"), "xx")
+        #print "k1 line",my_var.seq_lineage(seq)
+        #print "k2 prnt",my_var.seq_parent(seq)
+        #print "k3 prog",my_var.seq_progenitor(seq)
+        #print "k4  del",my_var.seq_delete(seq)
         #print my_var.append_index("item", "broom")
 
         print "z",my_var._explicit()

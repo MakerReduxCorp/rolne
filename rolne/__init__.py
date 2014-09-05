@@ -2,7 +2,7 @@
 #
 # rolne datatype class: Recursive Ordered List of Named Elements
 #
-# Version 0.1.12
+# Version 0.1.16
     
 import copy
 
@@ -35,11 +35,21 @@ Internal Notes:
 
 class rolne(object):
 
-    def __init__(self, in_list=None):
+    def __init__(self, in_list=None, in_tuple=None, ancestor=None):
+        self.ref_name = None
+        self.ref_value = None
+        self.ref_seq = None
         if in_list is None:
-            self.data = []
+            if in_tuple is None:
+                self.data = []
+            else:
+                (self.ref_name, self.ref_value, self.data, self.ref_seq) = in_tuple
         else:
             self.data = in_list
+        if ancestor is None:
+            self.ancestor = self.data
+        else:
+            self.ancestor = ancestor
 
     def __str__(self, detail=False):
         result = ""
@@ -61,25 +71,40 @@ class rolne(object):
         
     def __getitem__(self, tup):
         if isinstance(tup, slice):
+            ###################
+            # handle a 'slice'
+            ###################
             (start_name, start_value, start_index) = (None, None, 0)
+            startlen = 0
             if tup.start:
-                if len(tup.start)>0:
-                    start_name = tup.start[0]
-                if len(tup.start)>1:
-                    start_value = tup.start[1]
-                if len(tup.start)>2:
-                    start_index = tup.start[2]
+                if not isinstance(tup.start, tuple):
+                    tup_start = (tup.start,)
+                else:
+                    tup_start = tup.start
+                startlen = len(tup_start)
+                if startlen>0:
+                    start_name = tup_start[0]
+                if startlen>1:
+                    start_value = tup_start[1]
+                if startlen>2:
+                    start_index = tup_start[2]
             (stop_name, stop_value, stop_index) = (None, None, 0)
+            stoplen = 0
             if tup.stop:
-                if len(tup.stop)>0:
-                    stop_name = tup.stop[0]
-                if len(tup.stop)>1:
-                    stop_value = tup.stop[1]
-                if len(tup.stop)>2:
-                    stop_index = tup.stop[2]
+                if not isinstance(tup.stop, tuple):
+                    tup_stop = (tup.stop,)
+                else:
+                    tup_stop = tup.stop
+                stoplen = len(tup_stop)
+                if stoplen>0:
+                    stop_name = tup_stop[0]
+                if stoplen>1:
+                    stop_value = tup_stop[1]
+                if stoplen>2:
+                    stop_index = tup_stop[2]
             if tup.step:
-                if tup.step==0:
-                    raise KeyError, "Step cannot be zero"
+                if tup.step<1:
+                    raise KeyError, "Step cannot be less than 1"
                 step = int(tup.step)
             else:
                 step = 1
@@ -89,39 +114,58 @@ class rolne(object):
             else:
                 start_flag = True
             start_ctr = 0
+            stop_ctr = 0
             step_ctr = 0
             new_list = []
             for entry in self.data:
                 if start_flag:
-                    if tup.stop and stop_name==entry[TNAME] and stop_value==entry[TVALUE]:
+                    if stoplen==1 and stop_name==entry[TNAME]:
+                        break
+                    if stoplen==2 and stop_name==entry[TNAME] and stop_value==entry[TVALUE]:
+                        break
+                    if stoplen==3 and stop_name==entry[TNAME] and stop_value==entry[TVALUE] and stop_index==stop_ctr:
                         break
                     if (step_ctr % step)==0:
                         new_list.append(entry)
                     step_ctr += 1
                 else:
-                    if start_name==entry[TNAME] and start_value==entry[TVALUE]:
-                        if start_ctr==start_index:
-                            start_flag = True
-                            new_list.append(entry)
-                            step_ctr += 1
-                        else:
-                            start_ctr += 1
+                    if startlen==1 and start_name==entry[TNAME]:
+                        start_flag = True
+                        new_list.append(entry)
+                        step_ctr += 1
+                    if startlen==2 and start_name==entry[TNAME] and start_value==entry[TVALUE]:
+                        start_flag = True
+                        new_list.append(entry)
+                        step_ctr += 1
+                    if startlen==3 and start_name==entry[TNAME] and start_value==entry[TVALUE] and start_index==start_ctr:
+                        start_flag = True
+                        new_list.append(entry)
+                        step_ctr += 1
+                # do the counters seperately
+                if startlen==3 and start_name==entry[TNAME] and start_value==entry[TVALUE]:
+                    start_ctr += 1
+                if stoplen==3 and stop_name==entry[TNAME] and stop_value==entry[TVALUE]:
+                    stop_ctr += 1
             else:
                 if start_flag:
                     if tup.stop:
                         raise KeyError, repr(tup.stop)+" not found"
                 else:
                     raise KeyError, repr(tup.start)+" not found"
-            return rolne(new_list)
+            return rolne(in_tuple = (self.ref_name, self.ref_value, new_list, self.ref_seq), ancestor=self.ancestor)
         else:
+            ###################
+            # handle a tuple (non-slice)
+            ###################
             if not isinstance(tup, tuple):
-                tup = (tup, None)
+                tup = (tup,)
+            arglen = len(tup)
             (name, value, index) = (None, None, 0)
-            if len(tup)>0:
+            if arglen>0:
                 name = tup[0]
-            if len(tup)>1:
+            if arglen>1:
                 value = tup[1]
-            if len(tup)>2:
+            if arglen>2:
                 index = tup[2]
             start_ctr = 0
             if index<0:
@@ -131,9 +175,9 @@ class rolne(object):
                 search_data = enumerate(self.data)
             for i, entry in search_data:
                 if entry[TNAME]==name:
-                    if entry[TVALUE]==value:
+                    if arglen==1 or entry[TVALUE]==value:
                         if start_ctr==index:
-                            return(rolne(self.data[i][TLIST]))
+                            return rolne(in_tuple = self.data[i], ancestor=self.ancestor)
                         else:
                             start_ctr += 1
         raise KeyError, repr(tup)+" not found"
@@ -232,7 +276,8 @@ class rolne(object):
 
     def __iter__(self):
         for entry in self.data:
-            x = rolne([entry])
+            x = rolne(in_tuple = entry, ancestor=self.ancestor)
+            #x = rolne([entry])
             yield x
 
     def _seq(self, seq=None):
@@ -335,7 +380,7 @@ class rolne(object):
                         result += " "+str(entry[TVALUE])
                 result += "\n"
                 if entry[TLIST]:
-                    temp = rolne(entry[TLIST]).mards(detail=detail)
+                    temp = rolne(in_tuple = entry, ancestor=self.ancestor).mards(detail=detail)
                     for line in temp.split("\n"):
                         if line:
                             result += "    "+line
@@ -440,7 +485,7 @@ class rolne(object):
             sublist = []
         new_tuple = (name, value, sublist, self._seq(seq))
         self.data.append(new_tuple)
-        index = len(self.get_list(name, value)) - 1
+        index = len(self.list_values(name, value)) - 1
         return index
 
     def upsert(self, name, value=None, seq=None):
@@ -501,32 +546,24 @@ class rolne(object):
         self.data.append(new_tuple)
         return True
 
-    def get_list(self, *args):
-        arg_count = len(args)
-        result = []
-        ctr = 0
-        for entry in self.data:
-            if arg_count==0:
-                result.append(entry[TVALUE])
-            if arg_count==1:
-                if entry[TNAME]==args[0]:
-                    result.append(entry[TVALUE])
-            if arg_count==2:
-                if entry[TNAME]==args[0] and entry[TVALUE]==args[1]:
-                    result.append(entry[TVALUE])
-            if arg_count==3:
-                if entry[TNAME]==args[0] and entry[TVALUE]==args[1]:
-                    if ctr==args[2]:
-                        result.append(entry[TVALUE])
-                    ctr += 1
-        return result
+    def extend(self, new_rolne, prefix=""):
+        for child in new_rolne:
+            new_list = []
+            new_list = self._extend(child.rlist(), prefix)
+            tup = (child.name(), child.value(), new_list, prefix+self._seq())
+            self.data.append(tup)
+        return
 
-    def get_names(self):
-        result = []
-        for entry in self.data:
-            result.append(entry[TNAME])
-        return result
-
+    def _extend(self, sublist, prefix):
+        new_list = []
+        for entry in sublist:
+            (en, ev, el, es) = entry
+            sub_list = self._extend(el, prefix)
+            tup = (en, ev, sub_list, prefix+self._seq())
+            new_list.append(tup)
+        return new_list
+        
+        
     def get_tuples(self, *args):
         arg_count = len(args)
         result = []
@@ -641,24 +678,271 @@ class rolne(object):
             tup = (entry[TNAME], entry[TVALUE], self._dump(entry[TLIST]))
             result.append(tup)
         return result
+
+    #
+    #
+    #   GET name/value/list/seq SECTION
+    #
+    #
         
-    def value(self, name):
-        for (en, ev, el, es) in self.data:
-            if en==name:
-                return ev
-        return None
+    # if called as x.name(), it returns it's own name
+    # if called as x.name(name), it returns the name of the first name entry
+    #    IF found (otherwise None)
+    def name(self, *args):
+        (name, _, _, _) = self._ref_tuple(*args)
+        return name
+    
+    # if called as x.value(), it returns it's own value
+    # if called as x.value(name), it returns the value of the first name entry
+    #    found (otherwise None)
+    def value(self, *args):
+        (_, value, _, _) = self._ref_tuple(*args)
+        return value
 
-    def seq(self, name, value, index=None):
-        if index is None:
-            index=0
+    # TODO: not sure if this should be allowed
+    def rlist(self, *args):
+        (_, _, rlist, _) = self._ref_tuple(*args)
+        return rlist
+
+    # if called as x.seq(), it returns it's own sequence id
+    # if called as x.seq(name, value, index), it returns the value of the first name entry
+    #    found (otherwise None)
+    #def seq(self, name, value, index=None):
+    def seq(self, *args):
+        (_, _, _, seq) = self._ref_tuple(*args)
+        return seq
+
+
+    # an internal routine to get self or an element based on flexible args
+    def _ref_tuple(self, *args):
+        arglen = len(args)
+        (name, value, index) = (None, None, 0)
+        if arglen>0:
+            name = args[0]
+        if arglen>1:
+            value = args[1]
+        if arglen>2:
+            index = args[2]
         ctr = 0
-        for (en, ev, el, es) in self.data:
-            if en==name and ev==value:
-                if ctr==index:
-                    return es
-                ctr += 1
+        if arglen==0:
+            return (self.ref_name, self.ref_value, self.data, self.ref_seq)
+        else:
+            for entry in self.data:
+                (en, ev, el, es) = entry
+                if en==name:
+                    if arglen==1 or ev==value:
+                        if ctr==index:
+                            return entry
+                        ctr += 1
+        return (None, None, None, None)
+
+
+    #
+    #
+    # SET name/value/list/seq SECTION
+    #
+    #
+    def set_name(self, new_parm, *args):
+        index = self._ref_index(*args)
+        if index is None:
+            return False
+        if index==-1:
+            # set the name of the SELF
+            # which, to make globally true, requires access
+            # to ancestry
+            if self.ref_seq is None:
+                # you can't change the name of SELF at the very
+                # top of the tree. (doing so breaks a lot of stuff)
+                return False
+            else:
+                rtemp = self._point_ancestry()
+                (list_ptr, index) = rtemp.list_ref_to_seq(self.ref_seq)
+                if index is None:
+                    return False
+                else:
+                    (en, ev, el, es) = list_ptr[index]
+                    list_ptr[index] = (new_parm, ev, el, es)
+                self.ref_name = new_parm
+                return True
+        # set the name of a child
+        (en, ev, el, es) = self.data[index]
+        self.data[index] = (new_parm, ev, el, es)
+        return True
+
+    def set_value(self, new_parm, *args):
+        index = self._ref_index(*args)
+        if index is None:
+            return False
+        if index==-1:
+            # set the name of the SELF
+            # which, to make globally true, requires access
+            # to ancestry
+            if self.ref_seq is None:
+                # you can't change the name of SELF at the very
+                # top of the tree. (doing so breaks a lot of stuff)
+                return False
+            else:
+                rtemp = self._point_ancestry()
+                (list_ptr, index) = rtemp.list_ref_to_seq(self.ref_seq)
+                if index is None:
+                    return False
+                else:
+                    (en, ev, el, es) = list_ptr[index]
+                    list_ptr[index] = (en, new_parm, el, es)
+                self.ref_name = new_parm
+                return True
+        # set the name of a child
+        (en, ev, el, es) = self.data[index]
+        self.data[index] = (en, new_parm, el, es)
+        return True
+    
+    # FOR NOW, we are not going to permit the 'setting' of an internal tuple-list
+    #def set_rlist(self, *args):
+    #    return False
+
+    def set_seq(self, new_parm, *args):
+        index = self._ref_index(*args)
+        if index is None:
+            return False
+        if index==-1:
+            # set the name of the SELF
+            # which, to make globally true, requires access
+            # to ancestry
+            if self.ref_seq is None:
+                # you can't change the name of SELF at the very
+                # top of the tree. (doing so breaks a lot of stuff)
+                return False
+            else:
+                rtemp = self._point_ancestry()
+                (list_ptr, index) = rtemp.list_ref_to_seq(self.ref_seq)
+                if index is None:
+                    return False
+                else:
+                    (en, ev, el, es) = list_ptr[index]
+                    list_ptr[index] = (en, ev, el, new_parm)
+                self.ref_name = new_parm
+                return True
+        # set the name of a child
+        (en, ev, el, es) = self.data[index]
+        self.data[index] = (en, ev, el, new_parm)
+        return True
+
+    # an internal routine to get data index based on flexible args
+    #   -1 = self
+    #   None = not found
+    #   else returns index number
+    def _ref_index(self, *args):
+        arglen = len(args)
+        (name, value, index) = (None, None, 0)
+        if arglen>0:
+            name = args[0]
+        if arglen>1:
+            value = args[1]
+        if arglen>2:
+            index = args[2]
+        ctr = 0
+        if arglen==0:
+            return -1
+        else:
+            for i, entry in enumerate(self.data):
+                (en, ev, el, es) = entry
+                if en==name:
+                    if arglen==1 or ev==value:
+                        if ctr==index:
+                            return i
+                        ctr += 1
         return None
 
+    # this routine creates a 'temporary' rolne that points to the
+    # 'top-level' rolne list.
+    # Any changes to self.ref_seq, ref_name, or ref_value are bogus
+    # and are lost when the rolne is garbage collected. But changes
+    # to children in TLIST survive.
+    def _point_ancestry(self):
+        return rolne(in_tuple=(None, None, self.ancestor, None))
+
+
+    #
+    #
+    #   LIST name/value/list/seq SECTION
+    #
+    #
+
+    def get_list(self, *args):
+        raise NameError("Command 'get_list' deprecated. Use 'list_values'.")
+
+    def list_values(self, *args):
+        arg_count = len(args)
+        result = []
+        ctr = 0
+        for entry in self.data:
+            if arg_count==0:
+                result.append(entry[TVALUE])
+            if arg_count==1:
+                if entry[TNAME]==args[0]:
+                    result.append(entry[TVALUE])
+            if arg_count==2:
+                if entry[TNAME]==args[0] and entry[TVALUE]==args[1]:
+                    result.append(entry[TVALUE])
+            if arg_count==3:
+                if entry[TNAME]==args[0] and entry[TVALUE]==args[1]:
+                    if ctr==args[2]:
+                        result.append(entry[TVALUE])
+                    ctr += 1
+        return result
+
+    def get_names(self, *args):
+        raise NameError("Command 'get_names' deprecated. Use 'list_names'.")
+    
+    def list_names(self, *args):
+        arg_count = len(args)
+        result = []
+        ctr = 0
+        for entry in self.data:
+            if arg_count==0:
+                result.append(entry[TNAME])
+            if arg_count==1:
+                if entry[TNAME]==args[0]:
+                    result.append(entry[TNAME])
+            if arg_count==2:
+                if entry[TNAME]==args[0] and entry[TVALUE]==args[1]:
+                    result.append(entry[TNAME])
+            if arg_count==3:
+                if entry[TNAME]==args[0] and entry[TVALUE]==args[1]:
+                    if ctr==args[2]:
+                        result.append(entry[TNAME])
+                    ctr += 1
+        return result
+
+    def list_seq(self, *args):
+        arg_count = len(args)
+        result = []
+        ctr = 0
+        for entry in self.data:
+            if arg_count==0:
+                result.append(entry[TSEQ])
+            if arg_count==1:
+                if entry[TNAME]==args[0]:
+                    result.append(entry[TSEQ])
+            if arg_count==2:
+                if entry[TNAME]==args[0] and entry[TVALUE]==args[1]:
+                    result.append(entry[TSEQ])
+            if arg_count==3:
+                if entry[TNAME]==args[0] and entry[TVALUE]==args[1]:
+                    if ctr==args[2]:
+                        result.append(entry[TSEQ])
+                    ctr += 1
+        return result
+
+
+    #
+    #
+    #   SEQUENCE ANCESTRY SUPPORT
+    #
+    #
+
+
+    # TODO: remove this function
     def summarize(self, name, *args):
         # we are using *args for 'value' because None is a valid value parameter that
         # must be distinquished from a _missing_ parameter.
@@ -677,6 +961,7 @@ class rolne(object):
                     summary.append((en, ev, el, es))
         return (name, value_list, rolne(in_list = summary))
 
+    # TODO: remove this function
     def filter(self, *argv):
         return self.summarize(*argv)[2]
 
@@ -685,7 +970,7 @@ class rolne(object):
         tup = self.ptr_to_seq(seq)
         if tup is None:
             return None
-        return rolne(in_list=tup[TLIST])
+        return rolne(in_tuple=tup, ancestor=self.ancestor)
         
     def ptr_to_seq(self, seq):
         # this is an interesting one: return a reference to
@@ -800,7 +1085,7 @@ class rolne(object):
     def copy(self, seq_prefix="copy_", seq_suffix=""):
         seq_prefix = str(seq_prefix)
         seq_suffix = str(seq_suffix)
-        return rolne(in_list=self._copy(seq_prefix, seq_suffix, self.data))
+        return rolne(in_tuple=(None, None, self._copy(seq_prefix, seq_suffix, self.data), None))
 
     def _copy(self, seq_prefix, seq_suffix, data):
         new_list = []
@@ -840,9 +1125,18 @@ if __name__ == "__main__":
         my_var["code_seq", None].append("*", "r3")
         my_var.upsert("system_title", "hello")
 
+        x_var = rolne()
+        x_var.append("item", "zingo")
+        x_var["item", "zingo"].upsert("size", "4b")
+        x_var["item", "zingo"].upsert("color", "redb")
+        x_var["item", "zingo"]["color", "redb"].upsert("intensity", "44%b")
+        x_var["item", "zingo"].upsert("color", "yellowb")
+
+
         print "a", my_var._explicit()
+        print "a2", x_var._explicit()
         #print "aa", my_var["zoom_flag"]
-        c_var = my_var.copy()
+        #c_var = my_var.copy()
         #print "b", my_var["code_seq"]
         #print "bb", my_var.find("code_seq")
         #print "c1", my_var.dump_list( ( ), name=True, value=True, index=True, seq=True)
@@ -857,26 +1151,74 @@ if __name__ == "__main__":
         #print "e", my_var["item", "zing"].value("size")
         #print "f", my_var
         #print "g", my_var["item", "broom", -1]
-        seq = "120"
-        #new_var = my_var.at_seq(seq)
+        #seq = "120"
+        #new_var = my_var.at_seq("ln1")
         #if new_var is not None:
         #    print "h2", new_var._explicit()
+        #    print "h2b", new_var.name()
+        #    print "h2c", new_var.value()
+        #    print "h2d", new_var.value("*")
+        #    print "h2e", new_var.list_names()
+        #    print "h2f1", new_var.list_values()
+        #    print "h2f2", my_var["code_seq"].list_values("*")
+        #    print "h2f2", my_var["code_seq"].get_list("*")
+        #    print "h2g", new_var.list_seq()
         #else:
         #    print "h2", None
         #new_tup = c_var.ptr_to_seq("copy_ln1")
         #print "h3", new_tup
         #new_ptr = my_var.list_ref_to_seq(seq)
         #print "h4", new_ptr
-        print "h5",my_var.seq_replace(seq, c_var.ptr_to_seq("copy_ln1"), "xx")
+        #print "h5",my_var.seq_replace(seq, c_var.ptr_to_seq("copy_ln1"), "xx")
         #print "k1 line",my_var.seq_lineage(seq)
         #print "k2 prnt",my_var.seq_parent(seq)
         #print "k3 prog",my_var.seq_progenitor(seq)
         #print "k4  del",my_var.seq_delete(seq)
         #print my_var.append_index("item", "broom")
-
+        #print "mn1", my_var.name()
+        #print "mn2", my_var.name("system_title")
+        #print "mn3", my_var["system_title"].name()
+        #print "mn4", my_var["item", "broom"].name("size")
+        #print "mv1", my_var.value()
+        #print "mv2", my_var.value("system_title")
+        #print "mv3", my_var["system_title"].value()
+        #print "mv4", my_var["item", "broom"].value("size")
+        #print "mr1", my_var.rlist()
+        #print "mr2", my_var.rlist("system_title")
+        #print "mr3", my_var["system_title"].rlist()
+        #print "mr4", my_var["item", "broom"].rlist("size")
+        #print "ms1", my_var.seq()
+        #print "ms2", my_var.seq("system_title")
+        #print "ms3", my_var["system_title"].seq()
+        #print "ms4", my_var["item", "broom"].seq("size")
+        #print "ms5", my_var["code_seq"].seq()
+        #print "ms5", my_var["code_seq"].seq("*", "r3")
+        #print "ms5", my_var["code_seq"].seq("*", "r3", 1)
+        #print "nn1", my_var.set_name("zip")
+        #print "nn2", my_var.set_name("new_title", "system_title")
+        #print "nn3", my_var["zoom_flag"].set_name("new_flag")
+        #print "nn4",  my_var["item", "broom"].set_name("new_size", "size")
+        #print "nn4b", my_var["item", "broom"].set_name("new_size", "size")
+        #print "nv1", my_var.set_value("zip")
+        #print "nv2", my_var.set_value("spook", "new_title")
+        #print "nv3", my_var["new_flag"].set_value("True")
+        #print "nv4",  my_var["item", "broom"].set_value("1000", "new_size")
+        #print "ns1", my_var.set_seq("2000")
+        #print "ns2", my_var.set_seq("3000", "new_title")
+        #print "ns3", my_var["new_flag"].set_seq("4000")
+        #print "ns4",  my_var["item", "broom"].set_seq("5000", "new_size")
+        #print "ns4b", my_var["item", "broom"]["new_size"].name()
+        #print "ns4c", my_var["item", "broom"]["new_size"].value()
+        #print "ns4d", my_var["item", "broom"]["new_size"].seq()
+        #print "o",my_var[("item", "zing") : ("item", "broom", 2)]
+        #print "o2",my_var[("zoom_flag") : ("system_title") : 1]
+        #print "o3",my_var[ : : 2]
+        my_var.extend(x_var, prefix="blah")
+        
         print "z",my_var._explicit()
-        print "z1", c_var._explicit()
+        #print "z1", c_var._explicit()
         #print "z2",my_var.dump()
+        print "z3",x_var._explicit()
 
         #TODO: add '.del_decendants()'
         #TODO: add '.del_ancestral_branch()'

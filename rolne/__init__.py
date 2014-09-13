@@ -5,6 +5,7 @@
 # Version 0.1.16
     
 import copy
+import xml
 
 TNAME = 0
 TVALUE = 1
@@ -1133,8 +1134,8 @@ if __name__ == "__main__":
         x_var["item", "zingo"].upsert("color", "yellowb")
 
 
-        print "a", my_var._explicit()
-        print "a2", x_var._explicit()
+        #print "a", my_var._explicit()
+        #print "a2", x_var._explicit()
         #print "aa", my_var["zoom_flag"]
         #c_var = my_var.copy()
         #print "b", my_var["code_seq"]
@@ -1213,16 +1214,43 @@ if __name__ == "__main__":
         #print "o",my_var[("item", "zing") : ("item", "broom", 2)]
         #print "o2",my_var[("zoom_flag") : ("system_title") : 1]
         #print "o3",my_var[ : : 2]
-        my_var.extend(x_var, prefix="blah")
+        #my_var.extend(x_var, prefix="blah")
         
-        print "z",my_var._explicit()
+        #print "z",my_var._explicit()
         #print "z1", c_var._explicit()
         #print "z2",my_var.dump()
-        print "z3",x_var._explicit()
+        #print "z3",x_var._explicit()
 
         #TODO: add '.del_decendants()'
         #TODO: add '.del_ancestral_branch()'
         #TODO: add '.change_name()'
+
+
+        my_xml = '''\
+<catalog>
+   <book id="bk101">
+      <author>Gambardella, Matthew</author>
+      <title>XML Developer's Guide</title>
+      <genre>Computer</genre>
+      <price>44.95</price>
+      <publish_date>2000-10-01</publish_date>
+      <description>An in-depth look at creating applications 
+      with XML.</description>
+   </book>
+   <book id="bk102">
+      <author>Ralls, Kim</author>
+      <title>Midnight Rain</title>
+      <genre>Fantasy</genre>
+      <price>5.95</price>
+      <publish_date>2000-12-16</publish_date>
+      <description>A former architect battles corporate zombies, 
+      an evil sorceress, and her own childhood to become queen 
+      of the world.</description>
+   </book>
+</catalog>
+'''
+        r = xml.parse_xml(my_xml)
+        print "ZZ1", r._explicit()
 
     else:
         print "==================================="

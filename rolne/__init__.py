@@ -1001,6 +1001,7 @@ if __name__ == "__main__":
         print "h", my_var["item", "broom", 1]["size"].parent_tuple()
         
         print "zmy",my_var._explicit()
+        print (str(my_var))
         #print "zx",x_var._explicit()
 
     else:

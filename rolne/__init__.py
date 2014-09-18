@@ -260,6 +260,16 @@ class rolne(object):
             x = rolne(in_tuple = entry, ancestor=self.ancestor)
             yield x
 
+    # TODO: this is not done yet. It does not account for duplicate seq (starting
+    #   from ancestral root.)
+    #   also, it is critical that this function create a 'copy'.
+    def __add__(self, other):
+        new_ancestor = self.ancestor + other.ancestor
+        new_list = self.data + other.data
+        return rolne(in_tuple=(self.ref_name, self.ref_value, new_list, self.ref_seq), ancestor=new_ancestor)
+
+    # TODO: add _sub_ method. Essentially, items matching in 'other' are removed
+    #  from self. The tricky bit is accounting for indexes.
 
     #############################
     #
@@ -567,77 +577,9 @@ class rolne(object):
             self.data.append(tup)
         return
 
-        
-    def get_tuples(self, *args):
-        arg_count = len(args)
-        result = []
-        ctr = 0
-        for entry in self.data:
-            if arg_count==0:
-                result.append((entry[TNAME], entry[TVALUE]))
-            if arg_count==1:
-                if entry[TNAME]==args[0]:
-                    result.append((entry[TNAME], entry[TVALUE]))
-            if arg_count==2:
-                if entry[TNAME]==args[0] and entry[TVALUE]==args[1]:
-                    result.append((entry[TNAME], entry[TVALUE]))
-            if arg_count==3:
-                if entry[TNAME]==args[0] and entry[TVALUE]==args[1]:
-                    if ctr==args[2]:
-                        result.append((entry[TNAME], entry[TVALUE]))
-                    ctr += 1
-        return result
-
-    def keys(self, *args):
-        return self.dump_list(args, name=True, value=True, index=True)
-
-    def dump_list(self, args, name=False, value=True, index=False, seq=False):
-        if not isinstance(args, tuple):
-            args = tuple([args])
-        arg_count = len(args)
-        result = []
-        ctr = {}
-        for entry in self.data:
-            # the counter function
-            if (entry[TNAME], entry[TVALUE]) in ctr:
-                ctr[(entry[TNAME], entry[TVALUE])] += 1
-            else:
-                ctr[(entry[TNAME], entry[TVALUE])] = 0
-            # make the tuple
-            items = []
-            if name:
-                items.append(entry[TNAME])
-            if value:
-                items.append(entry[TVALUE])
-            if index:
-                items.append(ctr[(entry[TNAME], entry[TVALUE])])
-            if seq:
-                items.append(entry[TSEQ])
-            tup = tuple(items)
-            # insert as dictated by args given
-            if arg_count==0:
-                result.append(tup)
-            if arg_count==1:
-                if entry[TNAME]==args[0]:
-                    result.append(tup)
-            if arg_count==2:
-                if entry[TNAME]==args[0] and entry[TVALUE]==args[1]:
-                    result.append(tup)
-            if arg_count==3:
-                if entry[TNAME]==args[0] and entry[TVALUE]==args[1]:
-                    if ctr[(entry[TNAME], entry[TVALUE])]==args[2]:
-                        result.append(tup)
-        return result
-
-        
-    def flattened_list(self, args, name=False, value=True, index=False, seq=False):
-        if not isinstance(args, tuple):
-            args = tuple([args])
-        return lib._flattened_list(self, self.data, args, name=name, value=value, index=index, seq=seq)
 
     def dump(self):
         return lib._dump(self, self.data)
-
 
     def copy(self, seq_prefix="copy_", seq_suffix=""):
         seq_prefix = str(seq_prefix)
@@ -799,16 +741,47 @@ class rolne(object):
         else:
             return my_parent.get_tuple()
 
-    #def parent_change(self, **kwargs):
-    #    return None
+    #
+    #  SEARCHING CHILDREN
+    #
+
+    def eq(self, key_list, value):
+        new_list = []
+        tup_list = self.list_tuples()
+        for i,t in enumerate(tup_list):
+            exist, target = lib.exist_and_pull(self.data[i], t[2], key_list)
+            if exist:
+                if target == value:
+                    new_list.append(self.data[i])
+        return rolne(in_tuple=(self.ref_name, self.ref_value, new_list, self.ref_seq), ancestor=self.ancestor)
+
+    def ne(self, key_list, value):
+        new_list = []
+        tup_list = self.list_tuples()
+        for i,t in enumerate(tup_list):
+            exist, target = lib.exist_and_pull(self.data[i], t[2], key_list)
+            if exist:
+                if target != value:
+                    new_list.append(self.data[i])
+        return rolne(in_tuple=(self.ref_name, self.ref_value, new_list, self.ref_seq), ancestor=self.ancestor)
+
+    def has(self, key_list):
+        new_list = []
+        tup_list = self.list_tuples()
+        for i,t in enumerate(tup_list):
+            exist, target = lib.exist_and_pull(self.data[i], t[2], key_list)
+            if exist:
+                new_list.append(self.data[i])
+        return rolne(in_tuple=(self.ref_name, self.ref_value, new_list, self.ref_seq), ancestor=self.ancestor)
 
     #
     #
-    #   LIST name/value/index/seq SECTION
+    #   LIST SECTION
     #
     #
-
     #("Command 'get_list' deprecated. Use 'list_values'.")
+    #("Command 'get_names' deprecated. Use 'list_names'.")
+    #("Command 'dump_list' deprecated. Use 'list_keys' or 'list_tuples'.")
 
     def list_values(self, *args):
         arg_count = len(args)
@@ -830,7 +803,6 @@ class rolne(object):
                     ctr += 1
         return result
 
-    #("Command 'get_names' deprecated. Use 'list_names'.")
     
     def list_names(self, *args):
         arg_count = len(args)
@@ -872,6 +844,16 @@ class rolne(object):
                     ctr += 1
         return result
 
+    def list_keys(self, *args):
+        return lib.dump_list(self, args, name=True, value=True, index=True)
+        
+    def list_tuples(self, *args):
+        return lib.dump_list(self, args, name=True, value=True, index=True, seq=True)
+
+    def list_tuples_flat(self, *args):
+        if not isinstance(args, tuple):
+            args = tuple([args])
+        return lib._flattened_list(self, self.data, args, name=True, value=True, index=True, seq=True)
     #
     #
     #   SEQUENCE ANCESTRY SUPPORT
@@ -1000,9 +982,15 @@ if __name__ == "__main__":
         my_var["zoom_flag", "temp"]="nuther"
         my_var.press("zoom_flag", "nuther", name="nuther nuther")
         print "h", my_var["item", "broom", 1]["size"].parent_tuple()
+        print "i", my_var.list_keys()
+        print "j", my_var.list_tuples()
+        print "jb", my_var.list_tuples_flat("item")
+        print "k", my_var.eq([("item")], "broom")
+        my_var += x_var
+        print "l", my_var
         
-        print "zmy",my_var._explicit()
-        print (str(my_var))
+        #print "zmy",my_var._explicit()
+        #print (str(my_var))
         #print "zx",x_var._explicit()
 
     else:

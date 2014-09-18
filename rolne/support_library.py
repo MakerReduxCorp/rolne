@@ -102,20 +102,27 @@ def _flattened_list(self, data, args, name, value, index, seq):
             items.append(entry[TSEQ])
         tup = tuple(items)
         # insert as dictated by args given
+        append_flag = False
         if arg_count==0:
             result.append(tup)
+            append_flag = True
         if arg_count==1:
             if entry[TNAME]==args[0]:
                 result.append(tup)
+                append_flag = True
         if arg_count==2:
             if entry[TNAME]==args[0] and entry[TVALUE]==args[1]:
                 result.append(tup)
+                append_flag = True
         if arg_count==3:
             if entry[TNAME]==args[0] and entry[TVALUE]==args[1]:
                 if ctr[(entry[TNAME], entry[TVALUE])]==args[2]:
                     result.append(tup)
-        if entry[TLIST]:
-            result.extend(_flattened_list(self, entry[TLIST], args, name, value, index, seq) )
+                    append_flag = True
+        if entry[TLIST] and append_flag:
+            # notice that the 'args' parameter does not get passed on recursion. That is because the
+            # search only happen at layer one.
+            result.extend(_flattened_list(self, entry[TLIST], (), name, value, index, seq) )
     return result
     
 def _dump(self, data):
@@ -271,3 +278,99 @@ def _copy(self, seq_prefix, seq_suffix, data):
         sub = _copy(self, seq_prefix, seq_suffix, el)
         new_list.append((copy.copy(ev), copy.copy(en), sub, seq_prefix+es+seq_suffix))
     return new_list
+
+def dump_list(self, args, name=False, value=False, index=False, seq=False):
+    if not isinstance(args, tuple):
+        args = tuple([args])
+    arg_count = len(args)
+    result = []
+    ctr = {}
+    for entry in self.data:
+        # the counter function
+        if (entry[TNAME], entry[TVALUE]) in ctr:
+            ctr[(entry[TNAME], entry[TVALUE])] += 1
+        else:
+            ctr[(entry[TNAME], entry[TVALUE])] = 0
+        # make the tuple
+        items = []
+        if name:
+            items.append(entry[TNAME])
+        if value:
+            items.append(entry[TVALUE])
+        if index:
+            items.append(ctr[(entry[TNAME], entry[TVALUE])])
+        if seq:
+            items.append(entry[TSEQ])
+        tup = tuple(items)
+        # insert as dictated by args given
+        if arg_count==0:
+            result.append(tup)
+        if arg_count==1:
+            if entry[TNAME]==args[0]:
+                result.append(tup)
+        if arg_count==2:
+            if entry[TNAME]==args[0] and entry[TVALUE]==args[1]:
+                result.append(tup)
+        if arg_count==3:
+            if entry[TNAME]==args[0] and entry[TVALUE]==args[1]:
+                if ctr[(entry[TNAME], entry[TVALUE])]==args[2]:
+                    result.append(tup)
+    return result
+
+    
+# the 'key_list' is very flexible:
+#   exist_pull(item, "name")
+#   exist_pull(item, ("name", "val"))
+#   exist_pull(item, ["name1", "name2"])
+#   exist_pull(item, [("name", "val"), ("name2", "val2")])
+def exist_and_pull(tup, root_index, key_list):
+    if isinstance(key_list, list):
+        pass
+    else:
+        key_list = [key_list]
+    ptr = [tup]
+    for level, key in enumerate(key_list):
+        en = ev = None
+        ei = 0
+        if isinstance(key, list) or isinstance(key, tuple):
+            cl = len(key)
+            if cl>0: en = key[0]
+            if cl>1: ev = key[1]
+            if cl>2: ei = key[2]
+            if cl>3: cl=3
+            if cl==1 and en is None:
+                cl=0  # (None) and [] and [None] is the same as None: match everything
+        else:
+            en = key
+            cl = 1
+            if key is None:
+                cl=0  # None means match everything. It is the same thing as () and []
+        ctr = 0
+        for i, item in enumerate(ptr):
+            if cl==0:
+                value = item[TVALUE]
+                break
+            elif cl==1:
+                if en==item[TNAME]:
+                    value = item[TVALUE]
+                    break
+            elif cl==2:
+                if en==item[TNAME] and ev==item[TVALUE]:
+                    value = item[TVALUE]
+                    break
+            elif cl==3:
+                if en==item[TNAME] and ev==item[TVALUE]:
+                    if level==0:
+                        if ei==root_index:
+                            value = item[TVALUE]
+                            break
+                    else:
+                        if ei==ctr:
+                            value = item[TVALUE]
+                            break
+                        ctr += 1
+        else:
+            return False, None
+        ptr = ptr[i][TLIST]
+    return True, value
+

@@ -1,0 +1,18 @@
+
+
+Let's use it for example questions:
+
+
+What is the id of note #2?
+
+>>> my_xml["messages"]["note", None, 1]["id"].value
+
+What notes were sent from "Jani"?
+
+>>> my_xml.search(["messages", "note"], from="Jani")
+
+Who were they sent to?
+
+>>> my_xml.search(["messages", "note"], from="Jani").list_values("to")
+["Tove"]
+

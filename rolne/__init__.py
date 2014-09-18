@@ -2,15 +2,16 @@
 #
 # rolne datatype class: Recursive Ordered List of Named Elements
 #
-# Version 0.1.16
+# Version 0.2.1
     
 import copy
+import xml
+import support_library as lib
 
 TNAME = 0
 TVALUE = 1
 TLIST = 2
 TSEQ = 3
-NS = 101
 
 '''
 Internal Notes:
@@ -35,6 +36,12 @@ Internal Notes:
 
 class rolne(object):
 
+    #############################
+    #
+    #   STANDARD CLASS METHODS
+    #
+    #############################
+
     def __init__(self, in_list=None, in_tuple=None, ancestor=None):
         self.ref_name = None
         self.ref_value = None
@@ -57,14 +64,13 @@ class rolne(object):
             result += "<rolne datatype object:\n"
         else:
             result += "%rolne:\n"
-        result += self.mards(detail=detail)
+        result += lib.mards(self, detail=detail)
         if detail:
             result += ">"
         return result
 
     def _explicit(self):
         return self.__str__(detail=True)
-
 
     def __len__(self):
         return len(self.data)
@@ -186,37 +192,12 @@ class rolne(object):
     def __setitem__(self, tup, value):
         if not isinstance(tup, tuple):
             tup = tuple([tup])
-        arglen = len(tup)
-        (name, cur_value, index) = (None, None, 0)
-        index_flag = False
-        if arglen==1:
-            name = tup[TNAME]
-        elif arglen==2:
-            name = tup[TNAME]
-            cur_value = tup[TVALUE]
-        elif arglen==3:
-            name = tup[TNAME]
-            cur_value = tup[TVALUE]
-            index = tup[2]
-        elif arglen==0:
-            raise KeyError, repr(tup)+" is empty"
-        else:
-            raise KeyError, repr(tup)+" has too many items"
-        start_ctr = 0
-        for i,(entry_name, entry_value, entry_list, entry_seq) in enumerate(self.data):
-            if entry_name==name:
-                if entry_value==cur_value or arglen==1:
-                    if start_ctr==index:
-                        new_tuple = (entry_name, value, entry_list, entry_seq)
-                        self.data[i] = new_tuple
-                        return True
-                    else:
-                        start_ctr += 1
-        if arglen==3:
-            raise KeyError, repr(tup)+" not found"
-        else:
-            self.append(name, value)
-        return True
+        if not self.press(*tup, value=value):
+            if len(tup):
+                self.append(tup[TNAME], value)
+            else:
+                raise KeyError, repr(tup)+" not found"
+        return None
 
     def __delitem__(self, tup):
         if not isinstance(tup, tuple):
@@ -277,17 +258,83 @@ class rolne(object):
     def __iter__(self):
         for entry in self.data:
             x = rolne(in_tuple = entry, ancestor=self.ancestor)
-            #x = rolne([entry])
             yield x
 
-    def _seq(self, seq=None):
-        global NS
-        if seq:
-            result = str(seq)
+    # TODO: this is not done yet. It does not account for duplicate seq (starting
+    #   from ancestral root.)
+    #   also, it is critical that this function create a 'copy'.
+    def __add__(self, other):
+        new_ancestor = self.ancestor + other.ancestor
+        new_list = self.data + other.data
+        return rolne(in_tuple=(self.ref_name, self.ref_value, new_list, self.ref_seq), ancestor=new_ancestor)
+
+    # TODO: add _sub_ method. Essentially, items matching in 'other' are removed
+    #  from self. The tricky bit is accounting for indexes.
+
+    #############################
+    #
+    # PROPERTY METHODS
+    #
+    #############################
+
+    #-------------------
+    #  PROPERTY: NAME
+    #-------------------
+    @property
+    def name(self):
+        return self.ref_name
+
+    @name.setter
+    def name(self, name):
+        self.change(name=name)
+        return None
+
+    @name.deleter
+    def name(self):
+        raise KeyError, "It is not possible to delete just a name. If you want to delete an entry, try to delete the entry itself."
+        return None
+
+    #-------------------
+    #  PROPERTY: VALUE
+    #-------------------
+    @property
+    def value(self):
+        return self.ref_value
+
+    @value.setter
+    def value(self, value):
+        self.change(value=value)
+        return None
+
+    @value.deleter
+    def value(self):
+        if self.ref_seq is None:
+            # you can't change the 'value' of SELF at the very
+            # top of the tree. (doing so breaks a lot of stuff)
+            # But, since a 'del' in this scenario sets it to None, there
+            # is no error to throw.
+            return None
         else:
-            result = str(NS)
-            NS += 1
-        return result
+            self.change(value=None)
+        return None
+
+    #-------------------
+    #  PROPERTY: SEQ
+    #-------------------
+    @property
+    def seq(self):
+        return self.ref_seq
+
+    @seq.setter
+    def seq(self, seq):
+        self.change(seq=seq)
+        return None
+
+    @seq.deleter
+    def seq(self):
+        raise KeyError, "It is not possible to delete a seq."
+        return None
+
 
     def find(self, *argv):
         """Locate a single rolne entry.
@@ -359,38 +406,12 @@ class rolne(object):
             return None
         return None
 
-    def mards(self, detail=False):
-        result = ""
-        # return repr(self.data)
-        if self.data:
-            for entry in self.data:
-                if detail==True:
-                    result += "[{}] ".format(str(entry[TSEQ]))
-                result += str(entry[TNAME])
-                if entry[TVALUE] is not None:
-                    printable = str(entry[TVALUE])
-                    quote_flag = False
-                    if '"' in printable:
-                        quote_flag = True
-                    if len(printable) != len(printable.strip()):
-                        quote_flag = True
-                    if quote_flag:
-                        result += " "+'"'+str(entry[TVALUE])+'"'
-                    else:
-                        result += " "+str(entry[TVALUE])
-                result += "\n"
-                if entry[TLIST]:
-                    temp = rolne(in_tuple = entry, ancestor=self.ancestor).mards(detail=detail)
-                    for line in temp.split("\n"):
-                        if line:
-                            result += "    "+line
-                            result += "\n"
-        else:
-            result = "%empty\n"
-        return result
 
     def append(self, name, value=None, sublist=None, seq=None):
         """Add one name/value entry to the main context of the rolne.
+
+        Unlike most 'append' methods, this one DOES return a value:
+        the newly assigned seq string.
 
         Example of use:
 
@@ -431,8 +452,10 @@ class rolne(object):
         """
         if sublist is None:
             sublist = []
-        new_tuple = (name, value, sublist, self._seq(seq))
+        new_seq = lib._seq(self, seq)
+        new_tuple = (name, value, sublist, new_seq)
         self.data.append(new_tuple)
+        return new_seq
 
     def append_index(self, name, value=None, sublist=None, seq=None):
         """Add one name/value entry to the main context of the rolne and
@@ -483,7 +506,7 @@ class rolne(object):
         """
         if sublist is None:
             sublist = []
-        new_tuple = (name, value, sublist, self._seq(seq))
+        new_tuple = (name, value, sublist, lib._seq(self, seq))
         self.data.append(new_tuple)
         index = len(self.list_values(name, value)) - 1
         return index
@@ -542,210 +565,83 @@ class rolne(object):
                 new_tuple = (name, value, entry[TLIST], entry[TSEQ])
                 self.data[ctr]=new_tuple
                 return False
-        new_tuple = (name, value, [], self._seq(seq))
+        new_tuple = (name, value, [], lib._seq(self, seq))
         self.data.append(new_tuple)
         return True
 
     def extend(self, new_rolne, prefix=""):
-        for child in new_rolne:
+        for line in new_rolne.data:
             new_list = []
-            new_list = self._extend(child.rlist(), prefix)
-            tup = (child.name(), child.value(), new_list, prefix+self._seq())
+            new_list = lib._extend(self, line[TLIST], prefix)
+            tup = (line[TNAME], line[TVALUE], new_list, prefix+lib._seq(self))
             self.data.append(tup)
         return
 
-    def _extend(self, sublist, prefix):
-        new_list = []
-        for entry in sublist:
-            (en, ev, el, es) = entry
-            sub_list = self._extend(el, prefix)
-            tup = (en, ev, sub_list, prefix+self._seq())
-            new_list.append(tup)
-        return new_list
-        
-        
-    def get_tuples(self, *args):
-        arg_count = len(args)
-        result = []
-        ctr = 0
-        for entry in self.data:
-            if arg_count==0:
-                result.append((entry[TNAME], entry[TVALUE]))
-            if arg_count==1:
-                if entry[TNAME]==args[0]:
-                    result.append((entry[TNAME], entry[TVALUE]))
-            if arg_count==2:
-                if entry[TNAME]==args[0] and entry[TVALUE]==args[1]:
-                    result.append((entry[TNAME], entry[TVALUE]))
-            if arg_count==3:
-                if entry[TNAME]==args[0] and entry[TVALUE]==args[1]:
-                    if ctr==args[2]:
-                        result.append((entry[TNAME], entry[TVALUE]))
-                    ctr += 1
-        return result
 
-    def keys(self, *args):
-        return self.dump_list(args, name=True, value=True, index=True)
-
-    def dump_list(self, args, name=False, value=True, index=False, seq=False):
-        if not isinstance(args, tuple):
-            args = tuple([args])
-        arg_count = len(args)
-        result = []
-        ctr = {}
-        for entry in self.data:
-            # the counter function
-            if (entry[TNAME], entry[TVALUE]) in ctr:
-                ctr[(entry[TNAME], entry[TVALUE])] += 1
-            else:
-                ctr[(entry[TNAME], entry[TVALUE])] = 0
-            # make the tuple
-            items = []
-            if name:
-                items.append(entry[TNAME])
-            if value:
-                items.append(entry[TVALUE])
-            if index:
-                items.append(ctr[(entry[TNAME], entry[TVALUE])])
-            if seq:
-                items.append(entry[TSEQ])
-            tup = tuple(items)
-            # insert as dictated by args given
-            if arg_count==0:
-                result.append(tup)
-            if arg_count==1:
-                if entry[TNAME]==args[0]:
-                    result.append(tup)
-            if arg_count==2:
-                if entry[TNAME]==args[0] and entry[TVALUE]==args[1]:
-                    result.append(tup)
-            if arg_count==3:
-                if entry[TNAME]==args[0] and entry[TVALUE]==args[1]:
-                    if ctr[(entry[TNAME], entry[TVALUE])]==args[2]:
-                        result.append(tup)
-        return result
-
-        
-    def flattened_list(self, args, name=False, value=True, index=False, seq=False):
-        if not isinstance(args, tuple):
-            args = tuple([args])
-        return self._flattened_list(self.data, args, name=name, value=value, index=index, seq=seq)
-
-    def _flattened_list(self, data, args, name, value, index, seq):
-        arg_count = len(args)
-        result = []
-        ctr = {}
-        for entry in data:
-            # the counter function
-            if (entry[TNAME], entry[TVALUE]) in ctr:
-                ctr[(entry[TNAME], entry[TVALUE])] += 1
-            else:
-                ctr[(entry[TNAME], entry[TVALUE])] = 0
-            # make the tuple
-            items = []
-            if name:
-                items.append(entry[TNAME])
-            if value:
-                items.append(entry[TVALUE])
-            if index:
-                items.append(ctr[(entry[TNAME], entry[TVALUE])])
-            if seq:
-                items.append(entry[TSEQ])
-            tup = tuple(items)
-            # insert as dictated by args given
-            if arg_count==0:
-                result.append(tup)
-            if arg_count==1:
-                if entry[TNAME]==args[0]:
-                    result.append(tup)
-            if arg_count==2:
-                if entry[TNAME]==args[0] and entry[TVALUE]==args[1]:
-                    result.append(tup)
-            if arg_count==3:
-                if entry[TNAME]==args[0] and entry[TVALUE]==args[1]:
-                    if ctr[(entry[TNAME], entry[TVALUE])]==args[2]:
-                        result.append(tup)
-            if entry[TLIST]:
-                result.extend(self._flattened_list( entry[TLIST], args, name, value, index, seq) )
-        return result
-        
     def dump(self):
-        return self._dump(self.data)
+        return lib._dump(self, self.data)
 
-    def _dump(self, data):
-        result = []
-        for entry in data:
-            tup = (entry[TNAME], entry[TVALUE], self._dump(entry[TLIST]))
-            result.append(tup)
-        return result
+    def copy(self, seq_prefix="copy_", seq_suffix=""):
+        seq_prefix = str(seq_prefix)
+        seq_suffix = str(seq_suffix)
+        return rolne(in_tuple=(None, None, lib._copy(self, seq_prefix, seq_suffix, self.data), None))
+
 
     #
     #
-    #   GET name/value/list/seq SECTION
+    #   GET name/value/index/seq/key/tuple SECTION
     #
     #
         
     # if called as x.name(), it returns it's own name
-    # if called as x.name(name), it returns the name of the first name entry
+    # if called as x.name(name,...), it returns the name of the first matching entry
     #    IF found (otherwise None)
-    def name(self, *args):
-        (name, _, _, _) = self._ref_tuple(*args)
+    def get_name(self, *args):
+        (name, _, _, _, _) = lib.ref_super_tuple(self, *args)
         return name
     
     # if called as x.value(), it returns it's own value
-    # if called as x.value(name), it returns the value of the first name entry
+    # if called as x.value(name,...), it returns the value of the first matching entry
     #    found (otherwise None)
-    def value(self, *args):
-        (_, value, _, _) = self._ref_tuple(*args)
+    def get_value(self, *args):
+        (_, value, _, _, _) = lib.ref_super_tuple(self, *args)
         return value
 
-    # TODO: not sure if this should be allowed
-    def rlist(self, *args):
-        (_, _, rlist, _) = self._ref_tuple(*args)
-        return rlist
+    # if called as x.index(), it returns it's own value
+    # if called as x.name(name,...), it returns the value of the first matching entry
+    #    found (otherwise None)
+    def get_index(self, *args):
+        (_, _, index, _, _) = lib.ref_super_tuple(self, *args)
+        return index
 
     # if called as x.seq(), it returns it's own sequence id
     # if called as x.seq(name, value, index), it returns the value of the first name entry
     #    found (otherwise None)
-    #def seq(self, name, value, index=None):
-    def seq(self, *args):
-        (_, _, _, seq) = self._ref_tuple(*args)
+    def get_seq(self, *args):
+        (_, _, _, seq, _) = lib.ref_super_tuple(self, *args)
         return seq
 
+    def get_key(self, *args):
+        (name, value, index, _, _) = lib.ref_super_tuple(self, *args)
+        return (name, value, index)
 
-    # an internal routine to get self or an element based on flexible args
-    def _ref_tuple(self, *args):
-        arglen = len(args)
-        (name, value, index) = (None, None, 0)
-        if arglen>0:
-            name = args[0]
-        if arglen>1:
-            value = args[1]
-        if arglen>2:
-            index = args[2]
-        ctr = 0
-        if arglen==0:
-            return (self.ref_name, self.ref_value, self.data, self.ref_seq)
-        else:
-            for entry in self.data:
-                (en, ev, el, es) = entry
-                if en==name:
-                    if arglen==1 or ev==value:
-                        if ctr==index:
-                            return entry
-                        ctr += 1
-        return (None, None, None, None)
-
+    def get_tuple(self, *args):
+        (name, value, index, seq, _) = lib.ref_super_tuple(self, *args)
+        return (name, value, index, seq)
 
     #
     #
-    # SET name/value/list/seq SECTION
+    # CHANGE (generic)
     #
-    #
-    def set_name(self, new_parm, *args):
-        index = self._ref_index(*args)
+    # r.change("name1", value="value2")
+    # 
+    def change(self, *args, **kwargs):
+        if 'seq' in kwargs and kwargs['seq'] is None:
+            raise KeyError, "It is not possible to set a seq to None."
+        list_ptr = self.data
+        index = lib._ref_index(self, *args)
         if index is None:
-            return False
+            raise KeyError, repr(args)+" not found"
         if index==-1:
             # set the name of the SELF
             # which, to make globally true, requires access
@@ -753,123 +649,153 @@ class rolne(object):
             if self.ref_seq is None:
                 # you can't change the name of SELF at the very
                 # top of the tree. (doing so breaks a lot of stuff)
-                return False
+                if 'name' in kwargs and kwargs['name'] is not None:
+                    raise ValueError("The name, value, and seq of an ancestral root of a rolne can only be None.")
+                if 'value' in kwargs and kwargs['value'] is not None:
+                    raise ValueError("The name, value, and seq of an ancestral root of a rolne can only be None.")
+                if 'seq' in kwargs and kwargs['seq'] is not None:
+                    raise ValueError("The name, value, and seq of an ancestral root of a rolne can only be None.")
+                return None
             else:
-                rtemp = self._point_ancestry()
-                (list_ptr, index) = rtemp.list_ref_to_seq(self.ref_seq)
-                if index is None:
-                    return False
-                else:
-                    (en, ev, el, es) = list_ptr[index]
-                    list_ptr[index] = (new_parm, ev, el, es)
-                self.ref_name = new_parm
-                return True
-        # set the name of a child
-        (en, ev, el, es) = self.data[index]
-        self.data[index] = (new_parm, ev, el, es)
-        return True
-
-    def set_value(self, new_parm, *args):
-        index = self._ref_index(*args)
-        if index is None:
-            return False
-        if index==-1:
-            # set the name of the SELF
-            # which, to make globally true, requires access
-            # to ancestry
-            if self.ref_seq is None:
-                # you can't change the name of SELF at the very
-                # top of the tree. (doing so breaks a lot of stuff)
-                return False
-            else:
-                rtemp = self._point_ancestry()
-                (list_ptr, index) = rtemp.list_ref_to_seq(self.ref_seq)
-                if index is None:
-                    return False
-                else:
-                    (en, ev, el, es) = list_ptr[index]
-                    list_ptr[index] = (en, new_parm, el, es)
-                self.ref_name = new_parm
-                return True
-        # set the name of a child
-        (en, ev, el, es) = self.data[index]
-        self.data[index] = (en, new_parm, el, es)
-        return True
-    
-    # FOR NOW, we are not going to permit the 'setting' of an internal tuple-list
-    #def set_rlist(self, *args):
-    #    return False
-
-    def set_seq(self, new_parm, *args):
-        index = self._ref_index(*args)
-        if index is None:
-            return False
-        if index==-1:
-            # set the name of the SELF
-            # which, to make globally true, requires access
-            # to ancestry
-            if self.ref_seq is None:
-                # you can't change the name of SELF at the very
-                # top of the tree. (doing so breaks a lot of stuff)
-                return False
-            else:
-                rtemp = self._point_ancestry()
-                (list_ptr, index) = rtemp.list_ref_to_seq(self.ref_seq)
-                if index is None:
-                    return False
-                else:
-                    (en, ev, el, es) = list_ptr[index]
-                    list_ptr[index] = (en, ev, el, new_parm)
-                self.ref_name = new_parm
-                return True
-        # set the name of a child
-        (en, ev, el, es) = self.data[index]
-        self.data[index] = (en, ev, el, new_parm)
-        return True
-
-    # an internal routine to get data index based on flexible args
-    #   -1 = self
-    #   None = not found
-    #   else returns index number
-    def _ref_index(self, *args):
-        arglen = len(args)
-        (name, value, index) = (None, None, 0)
-        if arglen>0:
-            name = args[0]
-        if arglen>1:
-            value = args[1]
-        if arglen>2:
-            index = args[2]
-        ctr = 0
-        if arglen==0:
-            return -1
-        else:
-            for i, entry in enumerate(self.data):
-                (en, ev, el, es) = entry
-                if en==name:
-                    if arglen==1 or ev==value:
-                        if ctr==index:
-                            return i
-                        ctr += 1
+                (list_ptr, index) = lib.list_ref_to_seq(self.ancestor, self.ref_seq)
+                if 'name' in kwargs: self.ref_name = kwargs['name']
+                if 'value' in kwargs: self.ref_value = kwargs['value']
+                if 'seq' in kwargs: self.ref_seq = kwargs['seq']
+        (en, ev, el, es) = list_ptr[index]
+        if 'name' in kwargs: en = kwargs['name']
+        if 'value' in kwargs: ev = kwargs['value']
+        if 'seq' in kwargs: es = kwargs['seq']
+        list_ptr[index] = (en, ev, el, es)
         return None
 
-    # this routine creates a 'temporary' rolne that points to the
-    # 'top-level' rolne list.
-    # Any changes to self.ref_seq, ref_name, or ref_value are bogus
-    # and are lost when the rolne is garbage collected. But changes
-    # to children in TLIST survive.
-    def _point_ancestry(self):
-        return rolne(in_tuple=(None, None, self.ancestor, None))
+    # 'press' and 'change' are almost identical. 'change' simply never generates
+    # an exception. It is more of a 'if it's okay, then do it.'
+    # returns True if change made, otherwise returns False
+    def press(self, *args, **kwargs):
+        if 'seq' in kwargs and kwargs['seq'] is None:
+            return False
+        list_ptr = self.data
+        index = lib._ref_index(self, *args)
+        if index is None:
+            return False
+        if index==-1:
+            # set the name of the SELF
+            # which, to make globally true, requires access
+            # to ancestry
+            if self.ref_seq is None:
+                # you can't change the name of SELF at the very
+                # top of the tree. (doing so breaks a lot of stuff)
+                return False
+            else:
+                (list_ptr, index) = lib.list_ref_to_seq(self.ancestor, self.ref_seq)
+                if 'name' in kwargs: self.ref_name = kwargs['name']
+                if 'value' in kwargs: self.ref_value = kwargs['value']
+                if 'seq' in kwargs: self.ref_seq = kwargs['seq']
+        (en, ev, el, es) = list_ptr[index]
+        if 'name' in kwargs: en = kwargs['name']
+        if 'value' in kwargs: ev = kwargs['value']
+        if 'seq' in kwargs: es = kwargs['seq']
+        list_ptr[index] = (en, ev, el, es)
+        return True
 
+    #
+    #
+    #   GET/CHANGE PARENT SECTION
+    #
+    #
+
+    def parent(self):
+        the_line = self.seq_lineage(self.ref_seq)
+        if len(the_line)==0:
+            return None
+        elif len(the_line)==1:
+            # I am a progenitor, my "parent" is root; return myself
+            return rolne(in_tuple=(None, None, self.ancestor, None), ancestor=self.ancestor)
+        else:
+            parent_seq = the_line[-2]
+            return self.at_seq(parent_seq)
+        
+    def parent_name(self):
+        (name, _, _, _) = parent_tuple(self)
+        return name
+
+    def parent_value(self):
+        (_, value, _, _) = parent_tuple(self)
+        return value
+
+    def parent_index(self):
+        (_, _, index, _) = parent_tuple(self)
+        return index
+
+    def parent_seq(self):
+        (_, _, _, seq) = parent_tuple(self)
+        return seq
+
+    def parent_key(self):
+        (name, value, index, _) = parent_tuple(self)
+        return (name, value, index)
+
+    def parent_tuple(self):
+        my_parent = self.parent()
+        if my_parent is None:
+            return False
+        else:
+            return my_parent.get_tuple()
+
+    #
+    #  SEARCHING CHILDREN
+    #
+
+    def eq(self, key_list, value):
+        new_list = []
+        tup_list = self.list_tuples()
+        for i,t in enumerate(tup_list):
+            exist, target = lib.exist_and_pull(self.data[i], t[2], key_list)
+            if exist:
+                if target == value:
+                    new_list.append(self.data[i])
+        return rolne(in_tuple=(self.ref_name, self.ref_value, new_list, self.ref_seq), ancestor=self.ancestor)
+
+    def ne(self, key_list, value):
+        new_list = []
+        tup_list = self.list_tuples()
+        for i,t in enumerate(tup_list):
+            exist, target = lib.exist_and_pull(self.data[i], t[2], key_list)
+            if exist:
+                if target != value:
+                    new_list.append(self.data[i])
+        return rolne(in_tuple=(self.ref_name, self.ref_value, new_list, self.ref_seq), ancestor=self.ancestor)
+
+    def only(self, key_list):
+        new_list = []
+        tup_list = self.list_tuples()
+        for i,t in enumerate(tup_list):
+            exist, target = lib.exist_and_pull(self.data[i], t[2], key_list)
+            if exist:
+                new_list.append(self.data[i])
+        return rolne(in_tuple=(self.ref_name, self.ref_value, new_list, self.ref_seq), ancestor=self.ancestor)
+
+    def has(self, key_list):
+        tup_list = self.list_tuples()
+        for i,t in enumerate(tup_list):
+            exist, target = lib.exist_and_pull(self.data[i], t[2], key_list)
+            if exist:
+                return True
+        return False
+        
+    def grep(self, *args):
+        if not isinstance(args, tuple):
+            args = tuple([args])
+        return lib._flattened_list(self, self.data, args, name=True, value=True, index=True, seq=True, grep=True)
 
     #
     #
-    #   LIST name/value/list/seq SECTION
+    #   LIST SECTION
     #
     #
-
-    def get_list(self, *args):
-        raise NameError("Command 'get_list' deprecated. Use 'list_values'.")
+    #("Command 'get_list' deprecated. Use 'list_values'.")
+    #("Command 'get_names' deprecated. Use 'list_names'.")
+    #("Command 'dump_list' deprecated. Use 'list_keys' or 'list_tuples'.")
 
     def list_values(self, *args):
         arg_count = len(args)
@@ -891,8 +817,6 @@ class rolne(object):
                     ctr += 1
         return result
 
-    def get_names(self, *args):
-        raise NameError("Command 'get_names' deprecated. Use 'list_names'.")
     
     def list_names(self, *args):
         arg_count = len(args)
@@ -934,79 +858,29 @@ class rolne(object):
                     ctr += 1
         return result
 
+    def list_keys(self, *args):
+        return lib.dump_list(self, args, name=True, value=True, index=True)
+        
+    def list_tuples(self, *args):
+        return lib.dump_list(self, args, name=True, value=True, index=True, seq=True)
 
+    def list_tuples_flat(self, *args):
+        if not isinstance(args, tuple):
+            args = tuple([args])
+        return lib._flattened_list(self, self.data, args, name=True, value=True, index=True, seq=True)
     #
     #
     #   SEQUENCE ANCESTRY SUPPORT
     #
     #
 
-
-    # TODO: remove this function
-    def summarize(self, name, *args):
-        # we are using *args for 'value' because None is a valid value parameter that
-        # must be distinquished from a _missing_ parameter.
-        if args:
-            value = args[0]
-            value_missing = False
-        else:
-            value = None
-            value_missing = True
-        value_list = []
-        summary = []
-        for (en, ev, el, es) in self.data:
-            if en==name:
-                if value_missing or ev==value:
-                    value_list.append(ev)
-                    summary.append((en, ev, el, es))
-        return (name, value_list, rolne(in_list = summary))
-
-    # TODO: remove this function
-    def filter(self, *argv):
-        return self.summarize(*argv)[2]
-
-    def at_seq(self, seq=None):
+    def at_seq(self, seq):
         # return the rolne located with the seq
-        tup = self.ptr_to_seq(seq)
+        tup = lib.ptr_to_seq(self, seq)
         if tup is None:
             return None
         return rolne(in_tuple=tup, ancestor=self.ancestor)
         
-    def ptr_to_seq(self, seq):
-        # this is an interesting one: return a reference to
-        # the direct tuple with this sequence. Use with care.
-        (target_list, target_index) = self.list_ref_to_seq(seq)
-        if target_list is None:
-            return None
-        return target_list[target_index]
-
-    def list_ref_to_seq(self, seq):
-        # this one REALLY jumps down the rabbit hole.
-        #
-        # returns a tuple containing the original list containing the
-        # sequence and the index pointing to the entry that
-        # has the sequence.
-        #
-        # (list, index)
-        #
-        # this is useful for for routines that, in turn, modify
-        # an entry. One cannot "change" a tuple. So a pointer
-        # to a tuple has no value. This combo allows true change
-        # because lists are mutable.
-        #
-        return self._list_ref_to_seq(self.data, seq)
-
-    def _list_ref_to_seq(self, data, seq):
-        result = (None, None)
-        for index, entry in enumerate(data):
-            (en, ev, el, es) = entry
-            if es==seq:
-               return (data, index)
-            if el:
-                result = self._list_ref_to_seq(el, seq)
-                if result[0] is not None:
-                    return result
-        return (None, None)
 
     def seq_replace(self, seq, src, prefix="rep"):
         # locating the entry with 'seq', replace the contents
@@ -1018,47 +892,30 @@ class rolne(object):
         # name, value, and subtending list all change.
         # the subtending entries get new seq ids
         # returns True is successful, else False
-        dest_ref = self.list_ref_to_seq(seq)
+        dest_ref = lib.list_ref_to_seq(self.data, seq)
         if dest_ref[0] is None:
             return False
         (dest_list, dest_index) = dest_ref
         ro_dest_tup = dest_list[dest_index]
         if type(src) is tuple:
             src_tup = src
+        elif type(src) is rolne:
+            src_tup = (src.name, src.value, src.data, src.seq)
         else:
-            src_tup = self.ptr_to_seq(src)
+            src_tup = lib.ptr_to_seq(self, src)
         if src_tup is None:
             return False
-        new_sub_list = self._copy_sublist_with_new_seq(src_tup[TLIST], prefix)
+        new_sub_list = lib._copy_sublist_with_new_seq(self, src_tup[TLIST], prefix)
         new_tup = (copy.deepcopy(src_tup[TNAME]), copy.deepcopy(src_tup[TVALUE]), new_sub_list, ro_dest_tup[TSEQ])
         dest_list[dest_index] = new_tup
         return True
 
-    def _copy_sublist_with_new_seq(self, source, prefix):
-        dest = []
-        for (ev, en, el, es) in source:
-            new_seq = prefix+self._seq() # called before next to make seq look logical
-            new_list = self._copy_sublist_with_new_seq(el, prefix)
-            new_tup = (copy.copy(ev), copy.copy(en), new_list, new_seq)
-            dest.append(new_tup)
-        return dest
 
     def seq_lineage(self, seq):
         # return a parental list of seq that are represented by a seq
         # TODO add a param to return keys rather than seq
-        return self._seq_lineage(self.data, seq)
+        return lib._seq_lineage(self.ancestor, seq)
 
-    def _seq_lineage(self, data, seq):
-        for index, entry in enumerate(data):
-            (en, ev, el, es) = entry
-            if es==seq:
-               return [es]
-            if el:
-                result = self._seq_lineage(el, seq)
-                if result:
-                    return [es]+result
-        return []
-        
     def seq_parent(self, seq):
         # seq of immediate parent
         the_line = self.seq_lineage(seq)
@@ -1075,25 +932,14 @@ class rolne(object):
 
     def seq_delete(self, seq):
         # delete the entry pointed to by the sequence
-        ref = self.list_ref_to_seq(seq)
+        ref = lib.list_ref_to_seq(self.data, seq)
         if ref[0] is None:
             return None
         (rl, ri) = ref
         del rl[ri]
         return seq
 
-    def copy(self, seq_prefix="copy_", seq_suffix=""):
-        seq_prefix = str(seq_prefix)
-        seq_suffix = str(seq_suffix)
-        return rolne(in_tuple=(None, None, self._copy(seq_prefix, seq_suffix, self.data), None))
 
-    def _copy(self, seq_prefix, seq_suffix, data):
-        new_list = []
-        for (ev, en, el, es) in data:
-            sub = self._copy(seq_prefix, seq_suffix, el)
-            new_list.append((copy.copy(ev), copy.copy(en), sub, seq_prefix+es+seq_suffix))
-        return new_list
-        
 if __name__ == "__main__":
 
     if True:
@@ -1132,97 +978,37 @@ if __name__ == "__main__":
         x_var["item", "zingo"]["color", "redb"].upsert("intensity", "44%b")
         x_var["item", "zingo"].upsert("color", "yellowb")
 
+        print "my_var", my_var._explicit()
+        #print "x_var", my_var._explicit()
 
-        print "a", my_var._explicit()
-        print "a2", x_var._explicit()
-        #print "aa", my_var["zoom_flag"]
-        #c_var = my_var.copy()
-        #print "b", my_var["code_seq"]
-        #print "bb", my_var.find("code_seq")
-        #print "c1", my_var.dump_list( ( ), name=True, value=True, index=True, seq=True)
-        #print "cz", my_var.flattened_list( ("title"), name=True, value=True, index=True, seq=True)
-        #print "c2", my_var.get( ("item"), name=True, value=True, index=True, seq=True)
-        #print "c3", my_var.get( ("item", "broom"), name=True, value=True, index=True, seq=True)
-        #print "c4", my_var.get( ("item", "broom", 2), name=True, value=True, index=True, seq=True)
-        #print "c5", my_var.get( ("item", "broom", 9), name=True, value=True, index=True, seq=True)
-        #print "c6", my_var.keys("item", "broom")
-        #my_var["code_seq"]["*", None] = 'zings'
-        #print "d", my_var._explicit()
-        #print "e", my_var["item", "zing"].value("size")
-        #print "f", my_var
-        #print "g", my_var["item", "broom", -1]
-        #seq = "120"
-        #new_var = my_var.at_seq("ln1")
-        #if new_var is not None:
-        #    print "h2", new_var._explicit()
-        #    print "h2b", new_var.name()
-        #    print "h2c", new_var.value()
-        #    print "h2d", new_var.value("*")
-        #    print "h2e", new_var.list_names()
-        #    print "h2f1", new_var.list_values()
-        #    print "h2f2", my_var["code_seq"].list_values("*")
-        #    print "h2f2", my_var["code_seq"].get_list("*")
-        #    print "h2g", new_var.list_seq()
-        #else:
-        #    print "h2", None
-        #new_tup = c_var.ptr_to_seq("copy_ln1")
-        #print "h3", new_tup
-        #new_ptr = my_var.list_ref_to_seq(seq)
-        #print "h4", new_ptr
-        #print "h5",my_var.seq_replace(seq, c_var.ptr_to_seq("copy_ln1"), "xx")
-        #print "k1 line",my_var.seq_lineage(seq)
-        #print "k2 prnt",my_var.seq_parent(seq)
-        #print "k3 prog",my_var.seq_progenitor(seq)
-        #print "k4  del",my_var.seq_delete(seq)
-        #print my_var.append_index("item", "broom")
-        #print "mn1", my_var.name()
-        #print "mn2", my_var.name("system_title")
-        #print "mn3", my_var["system_title"].name()
-        #print "mn4", my_var["item", "broom"].name("size")
-        #print "mv1", my_var.value()
-        #print "mv2", my_var.value("system_title")
-        #print "mv3", my_var["system_title"].value()
-        #print "mv4", my_var["item", "broom"].value("size")
-        #print "mr1", my_var.rlist()
-        #print "mr2", my_var.rlist("system_title")
-        #print "mr3", my_var["system_title"].rlist()
-        #print "mr4", my_var["item", "broom"].rlist("size")
-        #print "ms1", my_var.seq()
-        #print "ms2", my_var.seq("system_title")
-        #print "ms3", my_var["system_title"].seq()
-        #print "ms4", my_var["item", "broom"].seq("size")
-        #print "ms5", my_var["code_seq"].seq()
-        #print "ms5", my_var["code_seq"].seq("*", "r3")
-        #print "ms5", my_var["code_seq"].seq("*", "r3", 1)
-        #print "nn1", my_var.set_name("zip")
-        #print "nn2", my_var.set_name("new_title", "system_title")
-        #print "nn3", my_var["zoom_flag"].set_name("new_flag")
-        #print "nn4",  my_var["item", "broom"].set_name("new_size", "size")
-        #print "nn4b", my_var["item", "broom"].set_name("new_size", "size")
-        #print "nv1", my_var.set_value("zip")
-        #print "nv2", my_var.set_value("spook", "new_title")
-        #print "nv3", my_var["new_flag"].set_value("True")
-        #print "nv4",  my_var["item", "broom"].set_value("1000", "new_size")
-        #print "ns1", my_var.set_seq("2000")
-        #print "ns2", my_var.set_seq("3000", "new_title")
-        #print "ns3", my_var["new_flag"].set_seq("4000")
-        #print "ns4",  my_var["item", "broom"].set_seq("5000", "new_size")
-        #print "ns4b", my_var["item", "broom"]["new_size"].name()
-        #print "ns4c", my_var["item", "broom"]["new_size"].value()
-        #print "ns4d", my_var["item", "broom"]["new_size"].seq()
-        #print "o",my_var[("item", "zing") : ("item", "broom", 2)]
-        #print "o2",my_var[("zoom_flag") : ("system_title") : 1]
-        #print "o3",my_var[ : : 2]
-        my_var.extend(x_var, prefix="blah")
+        print "a",my_var["item"]
+        print "b",my_var["item"].value
+        my_var["item"].value="newval"
+        print "c",my_var["item"].value
+        # my_var.value = "blah"  #should generate a ValueError
+        del my_var["item"].value
+        print "d",my_var["item"].value
+        del my_var.value
+        print "e",my_var.value
+        my_var.change("item", "bam", name="zomp", value="zig", seq="zap")
+        print "f",my_var.press("item", "bam", name="zomp", value="zig", seq="zap")
+        #print "g",my_var.change(name="Jim") # should generate a Value Error
+        my_var["zoom_flag"]="temp"
+        my_var["howsa"]="world"
+        my_var["zoom_flag", "temp"]="nuther"
+        my_var.press("zoom_flag", "nuther", name="nuther nuther")
+        print "h", my_var["item", "broom", 1]["size"].parent_tuple()
+        print "i", my_var.list_keys()
+        print "j", my_var.list_tuples()
+        print "jb", my_var.list_tuples_flat("item")
+        print "jg", my_var.grep("color")
+        #print "k", my_var.eq([("item")], "broom")
+        #my_var += x_var
+        #print "l", my_var
         
-        print "z",my_var._explicit()
-        #print "z1", c_var._explicit()
-        #print "z2",my_var.dump()
-        print "z3",x_var._explicit()
-
-        #TODO: add '.del_decendants()'
-        #TODO: add '.del_ancestral_branch()'
-        #TODO: add '.change_name()'
+        #print "zmy",my_var._explicit()
+        #print (str(my_var))
+        #print "zx",x_var._explicit()
 
     else:
         print "==================================="

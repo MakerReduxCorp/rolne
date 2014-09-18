@@ -5,8 +5,11 @@
 # Version 0.1.16
     
 import copy
+<<<<<<< HEAD
 import xml
+=======
 import support_library as lib
+>>>>>>> feature/properties
 
 TNAME = 0
 TVALUE = 1
@@ -980,6 +983,99 @@ if __name__ == "__main__":
         x_var["item", "zingo"]["color", "redb"].upsert("intensity", "44%b")
         x_var["item", "zingo"].upsert("color", "yellowb")
 
+<<<<<<< HEAD
+
+        #print "a", my_var._explicit()
+        #print "a2", x_var._explicit()
+        #print "aa", my_var["zoom_flag"]
+        #c_var = my_var.copy()
+        #print "b", my_var["code_seq"]
+        #print "bb", my_var.find("code_seq")
+        #print "c1", my_var.dump_list( ( ), name=True, value=True, index=True, seq=True)
+        #print "cz", my_var.flattened_list( ("title"), name=True, value=True, index=True, seq=True)
+        #print "c2", my_var.get( ("item"), name=True, value=True, index=True, seq=True)
+        #print "c3", my_var.get( ("item", "broom"), name=True, value=True, index=True, seq=True)
+        #print "c4", my_var.get( ("item", "broom", 2), name=True, value=True, index=True, seq=True)
+        #print "c5", my_var.get( ("item", "broom", 9), name=True, value=True, index=True, seq=True)
+        #print "c6", my_var.keys("item", "broom")
+        #my_var["code_seq"]["*", None] = 'zings'
+        #print "d", my_var._explicit()
+        #print "e", my_var["item", "zing"].value("size")
+        #print "f", my_var
+        #print "g", my_var["item", "broom", -1]
+        #seq = "120"
+        #new_var = my_var.at_seq("ln1")
+        #if new_var is not None:
+        #    print "h2", new_var._explicit()
+        #    print "h2b", new_var.name()
+        #    print "h2c", new_var.value()
+        #    print "h2d", new_var.value("*")
+        #    print "h2e", new_var.list_names()
+        #    print "h2f1", new_var.list_values()
+        #    print "h2f2", my_var["code_seq"].list_values("*")
+        #    print "h2f2", my_var["code_seq"].get_list("*")
+        #    print "h2g", new_var.list_seq()
+        #else:
+        #    print "h2", None
+        #new_tup = c_var.ptr_to_seq("copy_ln1")
+        #print "h3", new_tup
+        #new_ptr = my_var.list_ref_to_seq(seq)
+        #print "h4", new_ptr
+        #print "h5",my_var.seq_replace(seq, c_var.ptr_to_seq("copy_ln1"), "xx")
+        #print "k1 line",my_var.seq_lineage(seq)
+        #print "k2 prnt",my_var.seq_parent(seq)
+        #print "k3 prog",my_var.seq_progenitor(seq)
+        #print "k4  del",my_var.seq_delete(seq)
+        #print my_var.append_index("item", "broom")
+        #print "mn1", my_var.name()
+        #print "mn2", my_var.name("system_title")
+        #print "mn3", my_var["system_title"].name()
+        #print "mn4", my_var["item", "broom"].name("size")
+        #print "mv1", my_var.value()
+        #print "mv2", my_var.value("system_title")
+        #print "mv3", my_var["system_title"].value()
+        #print "mv4", my_var["item", "broom"].value("size")
+        #print "mr1", my_var.rlist()
+        #print "mr2", my_var.rlist("system_title")
+        #print "mr3", my_var["system_title"].rlist()
+        #print "mr4", my_var["item", "broom"].rlist("size")
+        #print "ms1", my_var.seq()
+        #print "ms2", my_var.seq("system_title")
+        #print "ms3", my_var["system_title"].seq()
+        #print "ms4", my_var["item", "broom"].seq("size")
+        #print "ms5", my_var["code_seq"].seq()
+        #print "ms5", my_var["code_seq"].seq("*", "r3")
+        #print "ms5", my_var["code_seq"].seq("*", "r3", 1)
+        #print "nn1", my_var.set_name("zip")
+        #print "nn2", my_var.set_name("new_title", "system_title")
+        #print "nn3", my_var["zoom_flag"].set_name("new_flag")
+        #print "nn4",  my_var["item", "broom"].set_name("new_size", "size")
+        #print "nn4b", my_var["item", "broom"].set_name("new_size", "size")
+        #print "nv1", my_var.set_value("zip")
+        #print "nv2", my_var.set_value("spook", "new_title")
+        #print "nv3", my_var["new_flag"].set_value("True")
+        #print "nv4",  my_var["item", "broom"].set_value("1000", "new_size")
+        #print "ns1", my_var.set_seq("2000")
+        #print "ns2", my_var.set_seq("3000", "new_title")
+        #print "ns3", my_var["new_flag"].set_seq("4000")
+        #print "ns4",  my_var["item", "broom"].set_seq("5000", "new_size")
+        #print "ns4b", my_var["item", "broom"]["new_size"].name()
+        #print "ns4c", my_var["item", "broom"]["new_size"].value()
+        #print "ns4d", my_var["item", "broom"]["new_size"].seq()
+        #print "o",my_var[("item", "zing") : ("item", "broom", 2)]
+        #print "o2",my_var[("zoom_flag") : ("system_title") : 1]
+        #print "o3",my_var[ : : 2]
+        #my_var.extend(x_var, prefix="blah")
+        
+        #print "z",my_var._explicit()
+        #print "z1", c_var._explicit()
+        #print "z2",my_var.dump()
+        #print "z3",x_var._explicit()
+
+        #TODO: add '.del_decendants()'
+        #TODO: add '.del_ancestral_branch()'
+        #TODO: add '.change_name()'
+=======
         print "my_var", my_var._explicit()
         #print "x_var", my_var._explicit()
 
@@ -1004,6 +1100,34 @@ if __name__ == "__main__":
         print "zmy",my_var._explicit()
         print (str(my_var))
         #print "zx",x_var._explicit()
+>>>>>>> feature/properties
+
+
+        my_xml = '''\
+<catalog>
+   <book id="bk101">
+      <author>Gambardella, Matthew</author>
+      <title>XML Developer's Guide</title>
+      <genre>Computer</genre>
+      <price>44.95</price>
+      <publish_date>2000-10-01</publish_date>
+      <description>An in-depth look at creating applications 
+      with XML.</description>
+   </book>
+   <book id="bk102">
+      <author>Ralls, Kim</author>
+      <title>Midnight Rain</title>
+      <genre>Fantasy</genre>
+      <price>5.95</price>
+      <publish_date>2000-12-16</publish_date>
+      <description>A former architect battles corporate zombies, 
+      an evil sorceress, and her own childhood to become queen 
+      of the world.</description>
+   </book>
+</catalog>
+'''
+        r = xml.parse_xml(my_xml)
+        print "ZZ1", r._explicit()
 
     else:
         print "==================================="

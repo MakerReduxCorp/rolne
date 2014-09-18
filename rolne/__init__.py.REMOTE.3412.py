@@ -5,7 +5,6 @@
 # Version 0.1.16
     
 import copy
-import xml
 import support_library as lib
 
 TNAME = 0

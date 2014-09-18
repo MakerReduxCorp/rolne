@@ -4,7 +4,7 @@
 #
     
 import copy
-from rolne import rolne
+#from . import rolne
 
 TNAME = 0
 TVALUE = 1
@@ -80,7 +80,7 @@ def _extend(self, sublist, prefix):
     return new_list
         
 
-def _flattened_list(self, data, args, name, value, index, seq):
+def _flattened_list(self, data, args, name, value, index, seq, grep=False):
     arg_count = len(args)
     result = []
     ctr = {}
@@ -119,10 +119,14 @@ def _flattened_list(self, data, args, name, value, index, seq):
                 if ctr[(entry[TNAME], entry[TVALUE])]==args[2]:
                     result.append(tup)
                     append_flag = True
-        if entry[TLIST] and append_flag:
-            # notice that the 'args' parameter does not get passed on recursion. That is because the
-            # search only happen at layer one.
-            result.extend(_flattened_list(self, entry[TLIST], (), name, value, index, seq) )
+        if entry[TLIST]:
+            # notice that the 'args' parameter does not get passed on recursion. That
+            # is because the search only happen at layer one. (unless 'grep'=True)
+            if grep:
+                result.extend(_flattened_list(self, entry[TLIST], args, name, value, index, seq, grep=True) )
+            else:
+                if append_flag:
+                    result.extend(_flattened_list(self, entry[TLIST], (), name, value, index, seq) )
     return result
     
 def _dump(self, data):

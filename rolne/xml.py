@@ -4,7 +4,7 @@
 #
 #
 
-from rolne import rolne
+# from . import rolne
 
 def start_name(r, name):
     r.append(name, None)
@@ -16,7 +16,7 @@ def add_to_parent(r, name, value):
 
 def finish_element(r, value, seq):
     if value:
-        r.set_value(value)
+        r.value = value
     parent = r.seq_parent(seq)
     if parent:
         return r.at_seq(parent)
@@ -24,10 +24,10 @@ def finish_element(r, value, seq):
     
 def append_value(r, value):
     if value:
-        if r.value():
-            r.set_value(r.value()+" "+value)
+        if r.value:
+            r.value = r.value+" "+value
         else:
-            r.set_value(value)
+            r.value = value
     return None
     
 def parse_xml(text):
@@ -124,7 +124,7 @@ def parse_xml(text):
         elif state==CLOSE_ELEMENT:
             if ch in [">"]:
                 state = WANDER
-                ptr = finish_element(result, next_value, ptr.seq())
+                ptr = finish_element(result, next_value, ptr.seq)
             else:
                 pass
         elif state==DONE:

@@ -2,7 +2,7 @@
 #
 # rolne datatype class: Recursive Ordered List of Named Elements
 #
-# Version 0.1.16
+# Version 0.2.1
     
 import copy
 import xml
@@ -285,7 +285,7 @@ class rolne(object):
         return self.ref_name
 
     @name.setter
-    def name(self, value):
+    def name(self, name):
         self.change(name=name)
         return None
 
@@ -570,10 +570,10 @@ class rolne(object):
         return True
 
     def extend(self, new_rolne, prefix=""):
-        for child in new_rolne:
+        for line in new_rolne.data:
             new_list = []
-            new_list = lib._extend(self, child.rlist(), prefix)
-            tup = (child.name(), child.value(), new_list, prefix+lib._seq(self))
+            new_list = lib._extend(self, line[TLIST], prefix)
+            tup = (line[TNAME], line[TVALUE], new_list, prefix+lib._seq(self))
             self.data.append(tup)
         return
 
@@ -633,7 +633,8 @@ class rolne(object):
     #
     # CHANGE (generic)
     #
-    #
+    # r.change("name1", value="value2")
+    # 
     def change(self, *args, **kwargs):
         if 'seq' in kwargs and kwargs['seq'] is None:
             raise KeyError, "It is not possible to set a seq to None."
@@ -765,7 +766,7 @@ class rolne(object):
                     new_list.append(self.data[i])
         return rolne(in_tuple=(self.ref_name, self.ref_value, new_list, self.ref_seq), ancestor=self.ancestor)
 
-    def has(self, key_list):
+    def only(self, key_list):
         new_list = []
         tup_list = self.list_tuples()
         for i,t in enumerate(tup_list):
@@ -773,6 +774,19 @@ class rolne(object):
             if exist:
                 new_list.append(self.data[i])
         return rolne(in_tuple=(self.ref_name, self.ref_value, new_list, self.ref_seq), ancestor=self.ancestor)
+
+    def has(self, key_list):
+        tup_list = self.list_tuples()
+        for i,t in enumerate(tup_list):
+            exist, target = lib.exist_and_pull(self.data[i], t[2], key_list)
+            if exist:
+                return True
+        return False
+        
+    def grep(self, *args):
+        if not isinstance(args, tuple):
+            args = tuple([args])
+        return lib._flattened_list(self, self.data, args, name=True, value=True, index=True, seq=True, grep=True)
 
     #
     #
@@ -878,13 +892,15 @@ class rolne(object):
         # name, value, and subtending list all change.
         # the subtending entries get new seq ids
         # returns True is successful, else False
-        dest_ref = lib.list_ref_to_seq(self, seq)
+        dest_ref = lib.list_ref_to_seq(self.data, seq)
         if dest_ref[0] is None:
             return False
         (dest_list, dest_index) = dest_ref
         ro_dest_tup = dest_list[dest_index]
         if type(src) is tuple:
             src_tup = src
+        elif type(src) is rolne:
+            src_tup = (src.name, src.value, src.data, src.seq)
         else:
             src_tup = lib.ptr_to_seq(self, src)
         if src_tup is None:
@@ -985,9 +1001,10 @@ if __name__ == "__main__":
         print "i", my_var.list_keys()
         print "j", my_var.list_tuples()
         print "jb", my_var.list_tuples_flat("item")
-        print "k", my_var.eq([("item")], "broom")
-        my_var += x_var
-        print "l", my_var
+        print "jg", my_var.grep("color")
+        #print "k", my_var.eq([("item")], "broom")
+        #my_var += x_var
+        #print "l", my_var
         
         #print "zmy",my_var._explicit()
         #print (str(my_var))

@@ -2,7 +2,7 @@
 #
 # rolne datatype class: Recursive Ordered List of Named Elements
 #
-# Version 0.2.1
+# Version 0.2.2
     
 import copy
 import xml
@@ -581,10 +581,15 @@ class rolne(object):
     def dump(self):
         return lib._dump(self, self.data)
 
-    def copy(self, seq_prefix="copy_", seq_suffix=""):
+    def copy(self, seq_prefix="copy_", seq_suffix="", renumber=False):
         seq_prefix = str(seq_prefix)
         seq_suffix = str(seq_suffix)
-        return rolne(in_tuple=(None, None, lib._copy(self, seq_prefix, seq_suffix, self.data), None))
+        lib.COPY_NS = 1
+        if type(renumber) is not bool:
+            if type(renumber) is int:
+                lib.COPY_NS = renumber
+            renumber = True
+        return rolne(in_tuple=(None, None, lib._copy(self, seq_prefix, seq_suffix, self.data, renumber), None))
 
 
     #
@@ -1005,8 +1010,10 @@ if __name__ == "__main__":
         #print "k", my_var.eq([("item")], "broom")
         #my_var += x_var
         #print "l", my_var
+        mc = my_var.copy(seq_prefix="z", renumber=500)
+        print "m", mc._explicit()
         
-        #print "zmy",my_var._explicit()
+        print "zmy",my_var._explicit()
         #print (str(my_var))
         #print "zx",x_var._explicit()
 

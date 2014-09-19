@@ -4,7 +4,7 @@
 #
     
 import copy
-#from . import rolne
+import numbers
 
 TNAME = 0
 TVALUE = 1
@@ -12,6 +12,7 @@ TLIST = 2
 TSEQ = 3
 
 NS = 101
+COPY_NS = -99
 
 def _seq(self, seq=None):
     global NS
@@ -276,11 +277,17 @@ def _copy_sublist_with_new_seq(self, source, prefix):
         dest.append(new_tup)
     return dest
 
-def _copy(self, seq_prefix, seq_suffix, data):
+def _copy(self, seq_prefix, seq_suffix, data, renumber):
+    global COPY_NS
     new_list = []
     for (ev, en, el, es) in data:
-        sub = _copy(self, seq_prefix, seq_suffix, el)
-        new_list.append((copy.copy(ev), copy.copy(en), sub, seq_prefix+es+seq_suffix))
+        if renumber:
+            mid = str(COPY_NS)
+        else:
+            mid = es
+        COPY_NS += 1
+        sub = _copy(self, seq_prefix, seq_suffix, el, renumber)
+        new_list.append((copy.copy(ev), copy.copy(en), sub, seq_prefix+mid+seq_suffix))
     return new_list
 
 def dump_list(self, args, name=False, value=False, index=False, seq=False):

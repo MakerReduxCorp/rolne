@@ -59,14 +59,17 @@ class rolne(object):
             self.ancestor = ancestor
 
     def __str__(self, detail=False):
-        result = ""
+        return self.__unicode__(detail=detail).encode('ascii' ,'xmlcharrefreplace')
+
+    def __unicode__(self, detail=False):
+        result = u""
         if detail:
-            result += "<rolne datatype object:\n"
+            result += u"<rolne datatype object:\n"
         else:
-            result += "%rolne:\n"
+            result += u"%rolne:\n"
         result += lib.mards(self, detail=detail)
         if detail:
-            result += ">"
+            result += u">"
         return result
 
     def _explicit(self):
@@ -591,6 +594,28 @@ class rolne(object):
             renumber = True
         return rolne(in_tuple=(None, None, lib._copy(self, seq_prefix, seq_suffix, self.data, renumber), None))
 
+    def serialize(self, **kwargs):
+        if 'name_prefix' in kwargs:
+            name_prefix = unicode(kwargs['name_prefix'])
+        else:
+            name_prefix=u'\u25c8'
+        if 'value_prefix' in kwargs:
+            value_prefix = unicode(kwargs['value_prefix'])
+        else:
+            value_prefix=u'\u25bb'
+        if 'index_prefix' in kwargs:
+            index_prefix = unicode(kwargs['index_prefix'])
+        else:
+            index_prefix=u'\u25ab'
+        if 'explicit' in kwargs:
+            explicit = kwargs['explicit']
+        else:
+            explicit = False
+        return rolne(in_tuple=(self.ref_name, self.ref_value, lib._serialize(self, self.data, name_prefix, value_prefix, index_prefix, explicit), None), ancestor=self.ancestor)
+
+    def flatten(self):
+        return rolne(in_tuple=(self.ref_name, self.ref_value, lib._flatten(self.data), None), ancestor=self.ancestor)
+
 
     #
     #
@@ -873,6 +898,7 @@ class rolne(object):
         if not isinstance(args, tuple):
             args = tuple([args])
         return lib._flattened_list(self, self.data, args, name=True, value=True, index=True, seq=True)
+
     #
     #
     #   SEQUENCE ANCESTRY SUPPORT
@@ -1006,7 +1032,9 @@ if __name__ == "__main__":
         print "i", my_var.list_keys()
         print "j", my_var.list_tuples()
         print "jb", my_var.list_tuples_flat("item")
-        print "jg", my_var.grep("color")
+        print u"jc", unicode(my_var.serialize(explicit=True))
+        print u"jd", unicode(my_var.flatten())
+        #print "jg", my_var.grep("color")
         #print "k", my_var.eq([("item")], "broom")
         #my_var += x_var
         #print "l", my_var

@@ -2,7 +2,7 @@
 #
 # rolne datatype class: Recursive Ordered List of Named Elements
 #
-# Version 0.2.1
+# Version 0.2.2
     
 import copy
 import xml

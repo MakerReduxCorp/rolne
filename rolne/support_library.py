@@ -168,6 +168,38 @@ def _serialize(self, data, name_prefix, value_prefix, index_prefix, explicit, pa
         result.extend(sub)
     return result
 
+def _serialize_names(self, data, name_prefix, value_prefix, index_prefix, explicit, path=None):
+    result = []
+    ctr = {}
+    if path is None:
+        path = name_prefix
+    else:
+        path += name_prefix
+    for entry in data:
+        # the counter function
+        if entry[TNAME] in ctr:
+            ctr[entry[TNAME]] += 1
+        else:
+            ctr[entry[TNAME]] = 0
+        # make the tuple
+        idx = ctr[entry[TNAME]]
+        if explicit:
+            full_path = path+unicode(entry[TNAME])
+            full_path += index_prefix+str(idx)
+        else:
+            full_path = path+unicode(entry[TNAME])
+            if idx>0:
+                full_path += index_prefix+str(idx)
+        sub = []
+        if entry[TLIST]:
+            # notice that the 'args' parameter does not get passed on recursion. That
+            # is because the search only happen at layer one.
+            sub = _serialize_names(self, entry[TLIST], name_prefix, value_prefix, index_prefix, explicit, path=full_path)
+        tup = (full_path, entry[TVALUE], [], entry[TSEQ])
+        result.append(tup)
+        result.extend(sub)
+    return result
+
 def _flatten(data):
     result = []
     ctr = {}

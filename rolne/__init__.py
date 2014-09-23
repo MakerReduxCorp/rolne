@@ -2,7 +2,7 @@
 #
 # rolne datatype class: Recursive Ordered List of Named Elements
 #
-# Version 0.2.2
+# Version 0.2.3
     
 import copy
 import xml
@@ -613,6 +613,27 @@ class rolne(object):
             explicit = False
         return rolne(in_tuple=(self.ref_name, self.ref_value, lib._serialize(self, self.data, name_prefix, value_prefix, index_prefix, explicit), None), ancestor=self.ancestor)
 
+
+    def serialize_names(self, **kwargs):
+        if 'name_prefix' in kwargs:
+            name_prefix = unicode(kwargs['name_prefix'])
+        else:
+            name_prefix=u'\u25c8'
+        if 'value_prefix' in kwargs:
+            value_prefix = unicode(kwargs['value_prefix'])
+        else:
+            value_prefix=u'\u25bb'
+        if 'index_prefix' in kwargs:
+            index_prefix = unicode(kwargs['index_prefix'])
+        else:
+            index_prefix=u'\u25ab'
+        if 'explicit' in kwargs:
+            explicit = kwargs['explicit']
+        else:
+            explicit = False
+        return rolne(in_tuple=(self.ref_name, self.ref_value, lib._serialize_names(self, self.data, name_prefix, value_prefix, index_prefix, explicit), None), ancestor=self.ancestor)
+
+        
     def flatten(self):
         return rolne(in_tuple=(self.ref_name, self.ref_value, lib._flatten(self.data), None), ancestor=self.ancestor)
 
@@ -1032,7 +1053,7 @@ if __name__ == "__main__":
         print "i", my_var.list_keys()
         print "j", my_var.list_tuples()
         print "jb", my_var.list_tuples_flat("item")
-        print u"jc", unicode(my_var.serialize(explicit=True))
+        print u"jc", unicode(my_var.serialize_names())
         print u"jd", unicode(my_var.flatten())
         #print "jg", my_var.grep("color")
         #print "k", my_var.eq([("item")], "broom")

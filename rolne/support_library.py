@@ -31,30 +31,30 @@ def mards(self, detail=False):
     return _mards(self.data, detail)
     
 def _mards(data, detail):
-    result = ""
+    result = u""
     # return repr(self.data)
     if data:
         for entry in data:
             if detail==True:
-                result += "[{}] ".format(str(entry[TSEQ]))
+                result += u"[{}] ".format(unicode(entry[TSEQ]))
             result += poss_quotes(entry[TNAME])
             if entry[TVALUE] is None:
-                result += " is None"
+                result += u" is None"
             else:
-                result += " = "+poss_quotes(entry[TVALUE])
-            result += "\n"
+                result += u" = "+poss_quotes(entry[TVALUE])
+            result += u"\n"
             if entry[TLIST]:
                 temp = _mards(entry[TLIST], detail)
-                for line in temp.split("\n"):
+                for line in temp.split(u"\n"):
                     if line:
-                        result += "    "+line
-                        result += "\n"
+                        result += u"    "+line
+                        result += u"\n"
     else:
-        result = "%empty\n"
+        result = u"%empty\n"
     return result
 
 def poss_quotes(value):
-    printable = str(value)
+    printable = unicode(value)
     quote_flag = False
     if len(printable)==0:
         quote_flag = True
@@ -67,7 +67,7 @@ def poss_quotes(value):
     if len(printable) != len(printable.strip()):
         quote_flag = True
     if quote_flag:
-        return '"'+printable+'"'
+        return u'"'+printable+u'"'
     return printable
 
 def _extend(self, sublist, prefix):
@@ -128,6 +128,66 @@ def _flattened_list(self, data, args, name, value, index, seq, grep=False):
                 if append_flag:
                     result.extend(_flattened_list(self, entry[TLIST], (), name, value, index, seq) )
     return result
+    
+def _serialize(self, data, name_prefix, value_prefix, index_prefix, explicit, path=None):
+    result = []
+    ctr = {}
+    if path is None:
+        path = name_prefix
+    else:
+        path += name_prefix
+    for entry in data:
+        # the counter function
+        if (entry[TNAME], entry[TVALUE]) in ctr:
+            ctr[(entry[TNAME], entry[TVALUE])] += 1
+        else:
+            ctr[(entry[TNAME], entry[TVALUE])] = 0
+        # make the tuple
+        idx = ctr[(entry[TNAME], entry[TVALUE])]
+        if explicit:
+            full_path = path+unicode(entry[TNAME])
+            if entry[TVALUE] is None:
+                full_path += value_prefix
+            else:
+                full_path += value_prefix+unicode(entry[TVALUE])
+            full_path += index_prefix+str(idx)
+        else:
+            full_path = path+unicode(entry[TNAME])
+            if idx>0 or entry[TVALUE] is not None:
+                full_path += value_prefix+unicode(entry[TVALUE])
+            if idx>0:
+                full_path += index_prefix+str(idx)
+        sub = []
+        if entry[TLIST]:
+            # notice that the 'args' parameter does not get passed on recursion. That
+            # is because the search only happen at layer one.
+            sub = _serialize(self, entry[TLIST], name_prefix, value_prefix, index_prefix, explicit, path=full_path)
+        tup = (full_path, entry[TVALUE], [], entry[TSEQ])
+        result.append(tup)
+        result.extend(sub)
+    return result
+
+def _flatten(data):
+    result = []
+    ctr = {}
+    for entry in data:
+        # the counter function
+        if (entry[TNAME], entry[TVALUE]) in ctr:
+            ctr[(entry[TNAME], entry[TVALUE])] += 1
+        else:
+            ctr[(entry[TNAME], entry[TVALUE])] = 0
+        # make the tuple
+        idx = ctr[(entry[TNAME], entry[TVALUE])]
+        sub = []
+        if entry[TLIST]:
+            # notice that the 'args' parameter does not get passed on recursion. That
+            # is because the search only happen at layer one.
+            sub = _flatten(entry[TLIST])
+        tup = (entry[TNAME], entry[TVALUE], [], entry[TSEQ])
+        result.append(tup)
+        result.extend(sub)
+    return result
+    
     
 def _dump(self, data):
     result = []

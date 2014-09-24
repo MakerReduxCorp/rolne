@@ -11,18 +11,34 @@ TVALUE = 1
 TLIST = 2
 TSEQ = 3
 
-NS = 101
 COPY_NS = -99
 
-def _seq(self, seq=None):
-    global NS
+def _seq(self, seq=None, inc=1):
+    # decide on a starting point (result)
     if seq:
         result = str(seq)
     else:
-        result = str(NS)
-        NS += 1
+        result = str(self.NS[0])
+        self.NS[0] += inc
+    # now account for duplicates
+    ext = 2
+    if _seq_find_dup(self.ancestor, result):
+        try_result = result+" ("+str(ext)+")"
+        while _seq_find_dup(self.ancestor, try_result) and ext<100000:
+            ext += 1
+            try_result = result+" ("+str(ext)+")"
+        result = try_result
     return result
 
+def _seq_find_dup(data, seq):
+    for item in data:
+        if item[TSEQ]==seq:
+            return True
+        if item[TLIST]:
+            if _seq_find_dup(item[TLIST], seq):
+                return True
+    return False
+    
 def mards(self, detail=False):
     # this is NOT, of course, a _real_ MARDS representation.
     # for example, it is possible for a 'rolne' name to be a string with spaces.
@@ -71,12 +87,16 @@ def poss_quotes(value):
         return u'"'+printable+u'"'
     return printable
 
-def _extend(self, sublist, prefix):
+def _extend(self, sublist, prefix, retain_seq):
     new_list = []
     for entry in sublist:
         (en, ev, el, es) = entry
-        sub_list = _extend(self, el, prefix)
-        tup = (en, ev, sub_list, prefix+_seq(self))
+        if retain_seq:
+            seq = _seq(self, seq=prefix+es)
+        else:
+            seq = prefix+_seq(self)
+        sub_list = _extend(self, el, prefix, retain_seq)
+        tup = (en, ev, sub_list, seq)
         new_list.append(tup)
     return new_list
         
@@ -220,7 +240,32 @@ def _flatten(data):
         result.append(tup)
         result.extend(sub)
     return result
-    
+   
+def _renumber(self, data, increment, prefix, suffix):
+    result = []
+    for entry in data:
+        seq = str(self.NS[0])
+        if prefix:
+            seq = prefix+seq
+        if suffix:
+            seq = seq+suffix
+        self.NS[0] += increment
+        # now account for duplicates
+        if self.ref_seq is not None:  #am i a child (not the root)?
+            ext = 2
+            if _seq_find_dup(self.ancestor, seq):
+                try_result = seq+" ("+str(ext)+")"
+                while _seq_find_dup(self.ancestor, try_result) and ext<100000:
+                    ext += 1
+                    try_result = seq+" ("+str(ext)+")"
+                seq = try_result
+        if entry[TLIST]:
+            sub = _renumber(self, entry[TLIST], increment, prefix, suffix)
+        else:
+            sub = []
+        tup = (entry[TNAME], entry[TVALUE], sub, seq)
+        result.append(tup)
+    return result
     
 def _dump(self, data):
     result = []

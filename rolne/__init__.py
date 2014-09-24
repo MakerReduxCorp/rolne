@@ -2,7 +2,7 @@
 #
 # rolne datatype class: Recursive Ordered List of Named Elements
 #
-# Version 0.2.3
+# Version 0.2.4
     
 import copy
 import xml
@@ -42,10 +42,11 @@ class rolne(object):
     #
     #############################
 
-    def __init__(self, in_list=None, in_tuple=None, ancestor=None):
+    def __init__(self, in_list=None, in_tuple=None, ancestor=None, NS=None):
         self.ref_name = None
         self.ref_value = None
         self.ref_seq = None
+        self.NS = [100]  #this is a list to handle retention properly. weird yes.
         if in_list is None:
             if in_tuple is None:
                 self.data = []
@@ -57,6 +58,8 @@ class rolne(object):
             self.ancestor = self.data
         else:
             self.ancestor = ancestor
+        if NS:
+            self.NS = NS
 
     def __str__(self, detail=False):
         return self.__unicode__(detail=detail).encode('ascii' ,'xmlcharrefreplace')
@@ -161,7 +164,7 @@ class rolne(object):
                         raise KeyError, repr(tup.stop)+" not found"
                 else:
                     raise KeyError, repr(tup.start)+" not found"
-            return rolne(in_tuple = (self.ref_name, self.ref_value, new_list, self.ref_seq), ancestor=self.ancestor)
+            return rolne(in_tuple = (self.ref_name, self.ref_value, new_list, self.ref_seq), ancestor=self.ancestor, NS=self.NS)
         else:
             ###################
             # handle a tuple (non-slice)
@@ -186,7 +189,7 @@ class rolne(object):
                 if entry[TNAME]==name:
                     if arglen==1 or entry[TVALUE]==value:
                         if start_ctr==index:
-                            return rolne(in_tuple = self.data[i], ancestor=self.ancestor)
+                            return rolne(in_tuple = self.data[i], ancestor=self.ancestor, NS=self.NS)
                         else:
                             start_ctr += 1
         raise KeyError, repr(tup)+" not found"
@@ -260,7 +263,7 @@ class rolne(object):
 
     def __iter__(self):
         for entry in self.data:
-            x = rolne(in_tuple = entry, ancestor=self.ancestor)
+            x = rolne(in_tuple = entry, ancestor=self.ancestor, NS=self.NS)
             yield x
 
     # TODO: this is not done yet. It does not account for duplicate seq (starting
@@ -269,7 +272,11 @@ class rolne(object):
     def __add__(self, other):
         new_ancestor = self.ancestor + other.ancestor
         new_list = self.data + other.data
-        return rolne(in_tuple=(self.ref_name, self.ref_value, new_list, self.ref_seq), ancestor=new_ancestor)
+        if self.NS>other.NS:
+            new_NS = self.NS
+        else:
+            new_NS = other.NS
+        return rolne(in_tuple=(self.ref_name, self.ref_value, new_list, self.ref_seq), ancestor=new_ancestor, NS=new_NS)
 
     # TODO: add _sub_ method. Essentially, items matching in 'other' are removed
     #  from self. The tricky bit is accounting for indexes.
@@ -339,6 +346,11 @@ class rolne(object):
         return None
 
 
+    ###################################
+    #
+    # GENERAL METHODS
+    #
+    ###################################
     def find(self, *argv):
         """Locate a single rolne entry.
 
@@ -572,14 +584,16 @@ class rolne(object):
         self.data.append(new_tuple)
         return True
 
-    def extend(self, new_rolne, prefix=""):
+    def extend(self, new_rolne, prefix="", retain_seq=False):
         for line in new_rolne.data:
-            new_list = []
-            new_list = lib._extend(self, line[TLIST], prefix)
-            tup = (line[TNAME], line[TVALUE], new_list, prefix+lib._seq(self))
+            if retain_seq:
+                seq = lib._seq(self, seq=prefix+line[TSEQ])
+            else:
+                seq = prefix+lib._seq(self)
+            new_list = lib._extend(self, line[TLIST], prefix, retain_seq)
+            tup = (line[TNAME], line[TVALUE], new_list, seq)
             self.data.append(tup)
         return
-
 
     def dump(self):
         return lib._dump(self, self.data)
@@ -592,7 +606,7 @@ class rolne(object):
             if type(renumber) is int:
                 lib.COPY_NS = renumber
             renumber = True
-        return rolne(in_tuple=(None, None, lib._copy(self, seq_prefix, seq_suffix, self.data, renumber), None))
+        return rolne(in_tuple=(None, None, lib._copy(self, seq_prefix, seq_suffix, self.data, renumber), None), NS=[1000]) #TODO: don't just set to 1000. sheesh
 
     def serialize(self, **kwargs):
         if 'name_prefix' in kwargs:
@@ -611,7 +625,7 @@ class rolne(object):
             explicit = kwargs['explicit']
         else:
             explicit = False
-        return rolne(in_tuple=(self.ref_name, self.ref_value, lib._serialize(self, self.data, name_prefix, value_prefix, index_prefix, explicit), None), ancestor=self.ancestor)
+        return rolne(in_tuple=(self.ref_name, self.ref_value, lib._serialize(self, self.data, name_prefix, value_prefix, index_prefix, explicit), None), ancestor=self.ancestor, NS=self.NS)
 
 
     def serialize_names(self, **kwargs):
@@ -631,13 +645,20 @@ class rolne(object):
             explicit = kwargs['explicit']
         else:
             explicit = False
-        return rolne(in_tuple=(self.ref_name, self.ref_value, lib._serialize_names(self, self.data, name_prefix, value_prefix, index_prefix, explicit), None), ancestor=self.ancestor)
+        return rolne(in_tuple=(self.ref_name, self.ref_value, lib._serialize_names(self, self.data, name_prefix, value_prefix, index_prefix, explicit), None), ancestor=self.ancestor, NS=self.NS)
 
         
     def flatten(self):
-        return rolne(in_tuple=(self.ref_name, self.ref_value, lib._flatten(self.data), None), ancestor=self.ancestor)
+        return rolne(in_tuple=(self.ref_name, self.ref_value, lib._flatten(self.data), None), ancestor=self.ancestor, NS=self.NS)
 
 
+    def renumber(self, start=100, increment=1, prefix=None, suffix=None):
+        self.NS[0]=start
+        temp = lib._renumber(self, self.data, increment=increment, prefix=prefix, suffix=suffix)
+        for i, entry in enumerate(temp):
+            self.data[i] = entry
+        return self.NS[0]
+        
     #
     #
     #   GET name/value/index/seq/key/tuple SECTION
@@ -761,7 +782,7 @@ class rolne(object):
             return None
         elif len(the_line)==1:
             # I am a progenitor, my "parent" is root; return myself
-            return rolne(in_tuple=(None, None, self.ancestor, None), ancestor=self.ancestor)
+            return rolne(in_tuple=(None, None, self.ancestor, None), ancestor=self.ancestor, NS=self.NS)
         else:
             parent_seq = the_line[-2]
             return self.at_seq(parent_seq)
@@ -805,7 +826,7 @@ class rolne(object):
             if exist:
                 if target == value:
                     new_list.append(self.data[i])
-        return rolne(in_tuple=(self.ref_name, self.ref_value, new_list, self.ref_seq), ancestor=self.ancestor)
+        return rolne(in_tuple=(self.ref_name, self.ref_value, new_list, self.ref_seq), ancestor=self.ancestor, NS=self.NS)
 
     def ne(self, key_list, value):
         new_list = []
@@ -815,7 +836,7 @@ class rolne(object):
             if exist:
                 if target != value:
                     new_list.append(self.data[i])
-        return rolne(in_tuple=(self.ref_name, self.ref_value, new_list, self.ref_seq), ancestor=self.ancestor)
+        return rolne(in_tuple=(self.ref_name, self.ref_value, new_list, self.ref_seq), ancestor=self.ancestor, NS=self.NS)
 
     def only(self, key_list):
         new_list = []
@@ -824,7 +845,7 @@ class rolne(object):
             exist, target = lib.exist_and_pull(self.data[i], t[2], key_list)
             if exist:
                 new_list.append(self.data[i])
-        return rolne(in_tuple=(self.ref_name, self.ref_value, new_list, self.ref_seq), ancestor=self.ancestor)
+        return rolne(in_tuple=(self.ref_name, self.ref_value, new_list, self.ref_seq), ancestor=self.ancestor, NS=self.NS)
 
     def has(self, key_list):
         tup_list = self.list_tuples()
@@ -931,7 +952,7 @@ class rolne(object):
         tup = lib.ptr_to_seq(self, seq)
         if tup is None:
             return None
-        return rolne(in_tuple=tup, ancestor=self.ancestor)
+        return rolne(in_tuple=tup, ancestor=self.ancestor, NS=self.NS)
         
 
     def seq_replace(self, seq, src, prefix="rep"):
@@ -1028,39 +1049,46 @@ if __name__ == "__main__":
         x_var["item", "zingo"].upsert("size", "4b")
         x_var["item", "zingo"].upsert("color", "redb")
         x_var["item", "zingo"]["color", "redb"].upsert("intensity", "44%b")
-        x_var["item", "zingo"].upsert("color", "yellowb")
+        # x_var["item", "zingo"].upsert("color", "yellowb")
 
         print "my_var", my_var._explicit()
-        #print "x_var", my_var._explicit()
+        print "x_var", x_var._explicit()
 
-        print "a",my_var["item"]
-        print "b",my_var["item"].value
-        my_var["item"].value="newval"
-        print "c",my_var["item"].value
+        #print "a",my_var["item"]
+        #print "b",my_var["item"].value
+        #my_var["item"].value="newval"
+        #print "c",my_var["item"].value
         # my_var.value = "blah"  #should generate a ValueError
-        del my_var["item"].value
-        print "d",my_var["item"].value
-        del my_var.value
-        print "e",my_var.value
-        my_var.change("item", "bam", name="zomp", value="zig", seq="zap")
-        print "f",my_var.press("item", "bam", name="zomp", value="zig", seq="zap")
+        #del my_var["item"].value
+        #print "d",my_var["item"].value
+        #del my_var.value
+        #print "e",my_var.value
+        #my_var.change("item", "bam", name="zomp", value="zig", seq="zap")
+        #print "f",my_var.press("item", "bam", name="zomp", value="zig", seq="zap")
         #print "g",my_var.change(name="Jim") # should generate a Value Error
         my_var["zoom_flag"]="temp"
         my_var["howsa"]="world"
         my_var["zoom_flag", "temp"]="nuther"
         my_var.press("zoom_flag", "nuther", name="nuther nuther")
-        print "h", my_var["item", "broom", 1]["size"].parent_tuple()
-        print "i", my_var.list_keys()
-        print "j", my_var.list_tuples()
-        print "jb", my_var.list_tuples_flat("item")
-        print u"jc", unicode(my_var.serialize_names())
-        print u"jd", unicode(my_var.flatten())
+        #print "h", my_var["item", "broom", 1]["size"].parent_tuple()
+        #print "i", my_var.list_keys()
+        #print "j", my_var.list_tuples()
+        #print "jb", my_var.list_tuples_flat("item")
+        # print u"jc", unicode(my_var.serialize_names())
+        # print u"jd", unicode(my_var.flatten())
         #print "jg", my_var.grep("color")
         #print "k", my_var.eq([("item")], "broom")
         #my_var += x_var
         #print "l", my_var
-        mc = my_var.copy(seq_prefix="z", renumber=500)
-        print "m", mc._explicit()
+        #mc = my_var.copy(seq_prefix="z", renumber=500)
+        #print "m", mc._explicit()
+
+        #my_var.append("joe", "blow", seq="101")
+        #my_var.append("joe", "blow", seq="101")
+        my_var.append("joe", "blow", seq="101")
+        my_var["joe", "blow"].append("joe", "blow", seq="101")
+        my_var.extend(x_var, retain_seq=True)
+        my_var["item", "zingo"].renumber(start=50, increment=2)
         
         print "zmy",my_var._explicit()
         #print (str(my_var))

@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(
     name='rolne',
-    version='0.2.4',
+    version='0.2.5',
     author='Maker Redux Corporation',
     author_email='johnd@makerredux.com',
     packages=['rolne'],

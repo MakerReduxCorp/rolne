@@ -2,7 +2,7 @@
 #
 # rolne datatype class: Recursive Ordered List of Named Elements
 #
-# Version 0.2.4
+# Version 0.2.5
     
 import copy
 import xml
@@ -428,13 +428,16 @@ class rolne(object):
         Unlike most 'append' methods, this one DOES return a value:
         the newly assigned seq string.
 
+        If you are wanting to "append" another rolne, see the 'extend'
+        method instead.
+        
         Example of use:
 
         >>> # setup an example rolne first
         >>> my_var = rolne()
         >>> my_var.append("item", "zing")
-        >>> my_var["item", "zing", -1].append("size", "4")
-        >>> my_var["item", "zing", -1].append("color", "red")
+        >>> my_var["item", "zing"].append("size", "4")
+        >>> my_var["item", "zing"].append("color", "red")
         >>> print my_var
         %rolne:
         item zing
@@ -647,9 +650,27 @@ class rolne(object):
             explicit = False
         return rolne(in_tuple=(self.ref_name, self.ref_value, lib._serialize_names(self, self.data, name_prefix, value_prefix, index_prefix, explicit), None), ancestor=self.ancestor, NS=self.NS)
 
+    def deserialize_names(self, **kwargs):
+        if 'name_prefix' in kwargs:
+            name_prefix = unicode(kwargs['name_prefix'])
+        else:
+            name_prefix=u'\u25c8'
+        if 'index_prefix' in kwargs:
+            index_prefix = unicode(kwargs['index_prefix'])
+        else:
+            index_prefix=u'\u25ab'
+        return rolne(in_tuple=(self.ref_name, self.ref_value, lib._deserialize_names(self, self.data, name_prefix, value_prefix, index_prefix), None), ancestor=self.ancestor, NS=self.NS)
         
-    def flatten(self):
-        return rolne(in_tuple=(self.ref_name, self.ref_value, lib._flatten(self.data), None), ancestor=self.ancestor, NS=self.NS)
+        
+        
+# def grep(self, *args):
+        # if not isinstance(args, tuple):
+            # args = tuple([args])
+        # return lib._flattened_list(self, self.data, args, name=True, value=True, index=True, seq=True, grep=True)
+
+        
+    def flatten(self, *args):
+        return rolne(in_tuple=(self.ref_name, self.ref_value, lib._flatten(self.data, args), None), ancestor=self.ancestor, NS=self.NS)
 
 
     def renumber(self, start=100, increment=1, prefix=None, suffix=None):
@@ -1052,7 +1073,7 @@ if __name__ == "__main__":
         # x_var["item", "zingo"].upsert("color", "yellowb")
 
         print "my_var", my_var._explicit()
-        print "x_var", x_var._explicit()
+        #print "x_var", x_var._explicit()
 
         #print "a",my_var["item"]
         #print "b",my_var["item"].value
@@ -1066,16 +1087,18 @@ if __name__ == "__main__":
         #my_var.change("item", "bam", name="zomp", value="zig", seq="zap")
         #print "f",my_var.press("item", "bam", name="zomp", value="zig", seq="zap")
         #print "g",my_var.change(name="Jim") # should generate a Value Error
-        my_var["zoom_flag"]="temp"
-        my_var["howsa"]="world"
-        my_var["zoom_flag", "temp"]="nuther"
-        my_var.press("zoom_flag", "nuther", name="nuther nuther")
+        # my_var["zoom_flag"]="temp"
+        # my_var["howsa"]="world"
+        # my_var["zoom_flag", "temp"]="nuther"
+        # my_var.press("zoom_flag", "nuther", name="nuther nuther")
         #print "h", my_var["item", "broom", 1]["size"].parent_tuple()
         #print "i", my_var.list_keys()
         #print "j", my_var.list_tuples()
         #print "jb", my_var.list_tuples_flat("item")
-        # print u"jc", unicode(my_var.serialize_names())
-        # print u"jd", unicode(my_var.flatten())
+        temp = my_var.serialize_names()
+        print u"jc", unicode(temp)
+        print u"jc2", unicode(temp.deserialize_names())
+        # print u"jd", unicode(my_var.flatten("size", "2"))
         #print "jg", my_var.grep("color")
         #print "k", my_var.eq([("item")], "broom")
         #my_var += x_var
@@ -1085,10 +1108,10 @@ if __name__ == "__main__":
 
         #my_var.append("joe", "blow", seq="101")
         #my_var.append("joe", "blow", seq="101")
-        my_var.append("joe", "blow", seq="101")
-        my_var["joe", "blow"].append("joe", "blow", seq="101")
-        my_var.extend(x_var, retain_seq=True)
-        my_var["item", "zingo"].renumber(start=50, increment=2)
+        #my_var.append("joe", "blow", seq="101")
+        #my_var["joe", "blow"].append("joe", "blow", seq="101")
+        #my_var.extend(x_var, retain_seq=True)
+        #my_var["item", "zingo"].renumber(start=50, increment=2)
         
         print "zmy",my_var._explicit()
         #print (str(my_var))

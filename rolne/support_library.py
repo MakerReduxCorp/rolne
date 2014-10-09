@@ -223,27 +223,34 @@ def _serialize_names(self, data, name_prefix, value_prefix, index_prefix, explic
 def _deserialize_names(self, data, name_prefix, value_prefix, index_prefix, level=0):
     result = []
     next_ptr = result
-    ref_data = copy(data)
-    for entry in data:
+    while data:
+        entry = data[0]
         chunks = entry[TNAME].split(name_prefix)
         if chunks:
             if not chunks[0]:
                 del chunks[0] # the first entry is always/often empty
-        if len(chunks)==(level+1):
-            parts = chunks[-1].split(index_prefix)
-            if len(parts)==0:
-                continue
-            elif len(parts)==1:
-                name = parts[0]
-                index = 0
+        if chunks:
+            if len(chunks)==(level+1):
+                parts = chunks[-1].split(index_prefix)
+                if len(parts)==0:
+                    continue
+                elif len(parts)==1:
+                    name = parts[0]
+                    index = 0
+                else:
+                    name = parts[0]
+                    index = parts[1]
+                result.append((name, entry[TVALUE], entry[TLIST], entry[TSEQ]))
+                del data[0]
+            elif len(chunks)==(level+2):
+                (en, ev, el, es) = result[-1]
+                el += _deserialize_names(self, data, name_prefix, value_prefix, index_prefix, level+1)
+                result[-1] = (en, ev, el, es)
+            elif len(chunks)>(level+2):
+                raise ValueError("deserialize indexing jumped ahead by more than one level: "+repr(entry))
+                del data[0]
             else:
-                name = parts[0]
-                index = parts[1]
-            result.append((name, entry[TVALUE], entry[TLIST], entry[TSEQ]))
-        elif len(chunks)>(level+1):
-            (en, ev, el, es) = result[-1]
-            el += _deserialize_names(self, data, name_prefix, value_prefix, index_prefix, level+1)
-            result[-1] = (en, ev, el, es)
+                return result
     return result
     
 def _flatten(data, args):

@@ -13,7 +13,7 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-   quick_overview
+   overview
 
 Indices and tables
 ==================

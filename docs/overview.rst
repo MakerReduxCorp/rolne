@@ -1,23 +1,31 @@
-A quick overview of rolne!
-==========================
+An Overview of **rolne**
+========================
 
 A **rolne** is a new data type that is *ultra-inclusive*. As such, it is a useful tool to interpret complex (and less-predictable) data sets such as XML documents, MARDS documents, and configuration files.
 
-But, quickly, what a 'rolne' isn't...
--------------------------------------
+Comparing to Lists and Dictionaries
+-----------------------------------
 
-If you are already familiar with dictionaries and lists, then the following might give useful insight into what I mean by *ultra-inclusive*:
+If you are already familiar with Python's dictionaries and lists, then the following might give useful insight into what I mean by *ultra-inclusive*:
 
-A rolne is like a dictionary because it allows for 'named' elements. But,
-   * in a dictionary, the *names* (keys) are unique.
-   * in a rolne, multiple items can (and often do) have the same name.
+A rolne is like a dictionary because it let's you use a name to reference an elements: ::
 
-A rolne is like a list because the elements are _ordered_ and referenced by a dynamic integer index. But,
-   * in a list, the place in the list is strictly an integer
-   * in a rolne, the place in the list is based both on the name, value, *and* index.
+   >>> zippy["size"] = 4
 
-Now, let's do a picture...
---------------------------
+A rolne is like a list because the elements are _ordered_ and can be referenced by a dynamic integer index.
+
+   >>> zippy.append("fruit", "apple")
+   >>> zippy.append("fruit", "bannana")
+   >>> zippy.append("fruit", "orange")
+   >>> zippy.list_values("fruit")
+   ['apple', 'bannana', 'orange']
+   
+But,
+   * In a dictionary, the *names* (keys) are unique. In a rolne, multiple items can (and often do) have the same name.
+   * In a list, the place in the list is strictly an integer index. In a rolne, the place in the list is based both on the name, value, *and* index.
+
+Let's Start with an Example
+---------------------------
 
 Let's borrow one of the examples from XML docs at w3schools.com (http://www.w3schools.com/xml/xml_attributes.asp): ::
 
@@ -115,6 +123,9 @@ Now, let's dive down further: ::
 
 In this case, we are looking at the first ``"messages"``/``None`` and the second ``"note"``/``None``. Notice the ``1`` index. That reference the second item (but only of ``"note"``/``None`` items).
 
+Relationships
+-------------
+
 Let me point a variable at the location. ::
 
    >> here = my_xml["messages"]["note", None, 1]
@@ -186,8 +197,8 @@ And, of course, one can add/remove/update items:
    date = 2014-03-23
    code = [0, 39, 2]
    
-Added bonus of sequences
-------------------------
+Added Bonus: Sequence References
+--------------------------------
 
 In addition the basics, rolne also supports 'meta' sequences strings. Essentially, as each element is added rolne a new tracking string is also assigned to the name/value pair. One can simply ignore this. It is not critical to rolne's use. But it can be a useful short cut for remembering where "something" is.
 
@@ -221,10 +232,10 @@ You can purposely set your own key. The rolne simply checks to make sure the seq
    [33] code = [0, 39, 2]
    [hello] something = True
     
-The quick conclusion
---------------------
+Conclusion
+----------
 
-You have just been given the whirlwind tour. There is actaully far more to things than this. For example, one can:
+You have just been given a quick summary. There is actaully far more to things than this. For example, one can:
 
  * 'replace' child lines with other rolnes or child lines
  * copy with prefix and suffix clauses for sequences

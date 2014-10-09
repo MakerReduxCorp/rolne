@@ -2,11 +2,13 @@
 #
 # rolne datatype class: Recursive Ordered List of Named Elements
 #
-# Version 0.2.4
+__version__ = '0.2.7'
+__version_info__ = tuple([ int(num) for num in __version__.split('.')])
     
 import copy
 import xml
 import support_library as lib
+import cPickle
 
 TNAME = 0
 TVALUE = 1
@@ -425,16 +427,67 @@ class rolne(object):
     def append(self, name, value=None, sublist=None, seq=None):
         """Add one name/value entry to the main context of the rolne.
 
-        Unlike most 'append' methods, this one DOES return a value:
-        the newly assigned seq string.
-
+        If you are wanting to "append" another rolne, see the 'extend'
+        method instead.
+        
         Example of use:
 
         >>> # setup an example rolne first
         >>> my_var = rolne()
         >>> my_var.append("item", "zing")
-        >>> my_var["item", "zing", -1].append("size", "4")
-        >>> my_var["item", "zing", -1].append("color", "red")
+        >>> my_var["item", "zing"].append("size", "4")
+        >>> my_var["item", "zing"].append("color", "red")
+        >>> print my_var
+        %rolne:
+        item zing
+            size 4
+            color red
+        <BLANKLINE>
+        >>> my_var.append("item", "zing")
+        >>> my_var["item", "zing", -1].append("size", "2")
+        >>> my_var["item", "zing", -1].append("color", "blue")
+        >>> print my_var
+        %rolne:
+        item zing
+            size 4
+            color red
+        item zing
+            size 2
+            color blue
+        <BLANKLINE>
+
+        .. versionadded:: 0.1.1
+        
+        :param name:
+           The key name of the name/value pair.
+        :param value:
+           The key value of the name/value pair. If not passed, then the value
+           is assumed to be None.
+        :param sublist:
+           An optional parameter that also appends a subtending list of entries.
+           It is not recommended that this parameter be used.
+        """
+        if sublist is None:
+            sublist = []
+        new_seq = lib._seq(self, seq)
+        new_tuple = (name, value, sublist, new_seq)
+        self.data.append(new_tuple)
+        return
+
+    def append_seq(self, name, value=None, sublist=None, seq=None):
+        """Add one name/value entry to the current context of the rolne and
+        return the new sequence string.
+
+        If you are wanting to "append" another rolne, see the 'extend'
+        method instead.
+        
+        Example of use:
+
+        >>> # setup an example rolne first
+        >>> my_var = rolne()
+        >>> my_var.append("item", "zing")
+        >>> my_var["item", "zing"].append("size", "4")
+        >>> my_var["item", "zing"].append("color", "red")
         >>> print my_var
         %rolne:
         item zing
@@ -472,9 +525,13 @@ class rolne(object):
         self.data.append(new_tuple)
         return new_seq
 
+
     def append_index(self, name, value=None, sublist=None, seq=None):
         """Add one name/value entry to the main context of the rolne and
         return the index number for the new entry.
+
+        If you are wanting to "append" another rolne, see the 'extend'
+        method instead.
 
         Example of use:
 
@@ -647,9 +704,32 @@ class rolne(object):
             explicit = False
         return rolne(in_tuple=(self.ref_name, self.ref_value, lib._serialize_names(self, self.data, name_prefix, value_prefix, index_prefix, explicit), None), ancestor=self.ancestor, NS=self.NS)
 
+    def deserialize_names(self, **kwargs):
+        if 'name_prefix' in kwargs:
+            name_prefix = unicode(kwargs['name_prefix'])
+        else:
+            name_prefix=u'\u25c8'
+        if 'value_prefix' in kwargs:
+            value_prefix = unicode(kwargs['value_prefix'])
+        else:
+            value_prefix=u'\u25bb'
+        if 'index_prefix' in kwargs:
+            index_prefix = unicode(kwargs['index_prefix'])
+        else:
+            index_prefix=u'\u25ab'
+        ref_data = copy.deepcopy(self.data)
+        return rolne(in_tuple=(self.ref_name, self.ref_value, lib._deserialize_names(self, ref_data, name_prefix, value_prefix, index_prefix), None), ancestor=self.ancestor, NS=self.NS)
+
+    def pickle(self):
+        pickle_string = cPickle.dumps(self)
+        return pickle_string
+
+    def unpickle(self, pickle_string):
+        temp = cPickle.loads(pickle_string)
+        return rolne(in_tuple=(temp.ref_name, temp.ref_value, temp.data, temp.ref_seq), ancestor=temp.ancestor, NS=temp.NS)
         
-    def flatten(self):
-        return rolne(in_tuple=(self.ref_name, self.ref_value, lib._flatten(self.data), None), ancestor=self.ancestor, NS=self.NS)
+    def flatten(self, *args):
+        return rolne(in_tuple=(self.ref_name, self.ref_value, lib._flatten(self.data, args), None), ancestor=self.ancestor, NS=self.NS)
 
 
     def renumber(self, start=100, increment=1, prefix=None, suffix=None):
@@ -1052,7 +1132,7 @@ if __name__ == "__main__":
         # x_var["item", "zingo"].upsert("color", "yellowb")
 
         print "my_var", my_var._explicit()
-        print "x_var", x_var._explicit()
+        #print "x_var", x_var._explicit()
 
         #print "a",my_var["item"]
         #print "b",my_var["item"].value
@@ -1066,31 +1146,37 @@ if __name__ == "__main__":
         #my_var.change("item", "bam", name="zomp", value="zig", seq="zap")
         #print "f",my_var.press("item", "bam", name="zomp", value="zig", seq="zap")
         #print "g",my_var.change(name="Jim") # should generate a Value Error
-        my_var["zoom_flag"]="temp"
-        my_var["howsa"]="world"
-        my_var["zoom_flag", "temp"]="nuther"
-        my_var.press("zoom_flag", "nuther", name="nuther nuther")
+        # my_var["zoom_flag"]="temp"
+        # my_var["howsa"]="world"
+        # my_var["zoom_flag", "temp"]="nuther"
+        # my_var.press("zoom_flag", "nuther", name="nuther nuther")
         #print "h", my_var["item", "broom", 1]["size"].parent_tuple()
         #print "i", my_var.list_keys()
         #print "j", my_var.list_tuples()
         #print "jb", my_var.list_tuples_flat("item")
-        # print u"jc", unicode(my_var.serialize_names())
-        # print u"jd", unicode(my_var.flatten())
+        # temp = my_var.serialize_names()
+        # print u"jc", unicode(temp)
+        # print u"jc2", unicode(temp.deserialize_names())
+        # print u"jd", unicode(my_var.flatten("size", "2"))
         #print "jg", my_var.grep("color")
         #print "k", my_var.eq([("item")], "broom")
         #my_var += x_var
         #print "l", my_var
         #mc = my_var.copy(seq_prefix="z", renumber=500)
         #print "m", mc._explicit()
+        s = my_var.pickle()
+        print "n1", s
+        j = rolne().unpickle(s)
+        print "n2", j
 
         #my_var.append("joe", "blow", seq="101")
         #my_var.append("joe", "blow", seq="101")
-        my_var.append("joe", "blow", seq="101")
-        my_var["joe", "blow"].append("joe", "blow", seq="101")
-        my_var.extend(x_var, retain_seq=True)
-        my_var["item", "zingo"].renumber(start=50, increment=2)
+        #my_var.append("joe", "blow", seq="101")
+        #my_var["joe", "blow"].append("joe", "blow", seq="101")
+        #my_var.extend(x_var, retain_seq=True)
+        #my_var["item", "zingo"].renumber(start=50, increment=2)
         
-        print "zmy",my_var._explicit()
+        #print "zmy",my_var._explicit()
         #print (str(my_var))
         #print "zx",x_var._explicit()
 

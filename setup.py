@@ -1,8 +1,10 @@
 from distutils.core import setup
 
+import rolne
+
 setup(
     name='rolne',
-    version='0.2.4',
+    version=rolne.__version__,
     author='Maker Redux Corporation',
     author_email='johnd@makerredux.com',
     packages=['rolne'],

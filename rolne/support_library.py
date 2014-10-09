@@ -220,7 +220,41 @@ def _serialize_names(self, data, name_prefix, value_prefix, index_prefix, explic
         result.extend(sub)
     return result
 
-def _flatten(data):
+def _deserialize_names(self, data, name_prefix, value_prefix, index_prefix, level=0):
+    result = []
+    next_ptr = result
+    while data:
+        entry = data[0]
+        chunks = entry[TNAME].split(name_prefix)
+        if chunks:
+            if not chunks[0]:
+                del chunks[0] # the first entry is always/often empty
+        if chunks:
+            if len(chunks)==(level+1):
+                parts = chunks[-1].split(index_prefix)
+                if len(parts)==0:
+                    continue
+                elif len(parts)==1:
+                    name = parts[0]
+                    index = 0
+                else:
+                    name = parts[0]
+                    index = parts[1]
+                result.append((name, entry[TVALUE], entry[TLIST], entry[TSEQ]))
+                del data[0]
+            elif len(chunks)==(level+2):
+                (en, ev, el, es) = result[-1]
+                el += _deserialize_names(self, data, name_prefix, value_prefix, index_prefix, level+1)
+                result[-1] = (en, ev, el, es)
+            elif len(chunks)>(level+2):
+                raise ValueError("deserialize indexing jumped ahead by more than one level: "+repr(entry))
+                del data[0]
+            else:
+                return result
+    return result
+    
+def _flatten(data, args):
+    arg_count = len(args)
     result = []
     ctr = {}
     for entry in data:
@@ -235,9 +269,24 @@ def _flatten(data):
         if entry[TLIST]:
             # notice that the 'args' parameter does not get passed on recursion. That
             # is because the search only happen at layer one.
-            sub = _flatten(entry[TLIST])
-        tup = (entry[TNAME], entry[TVALUE], [], entry[TSEQ])
-        result.append(tup)
+            sub = _flatten(entry[TLIST], args)
+        # insert as dictated by args given
+        append_flag = False
+        if arg_count==0:
+            append_flag = True
+        if arg_count==1:
+            if entry[TNAME]==args[0]:
+                append_flag = True
+        if arg_count==2:
+            if entry[TNAME]==args[0] and entry[TVALUE]==args[1]:
+                append_flag = True
+        if arg_count==3:
+            if entry[TNAME]==args[0] and entry[TVALUE]==args[1]:
+                if ctr[(entry[TNAME], entry[TVALUE])]==args[2]:
+                    append_flag = True
+        if append_flag:
+            tup = (entry[TNAME], entry[TVALUE], [], entry[TSEQ])
+            result.append(tup)
         result.extend(sub)
     return result
    

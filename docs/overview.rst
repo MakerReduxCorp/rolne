@@ -8,21 +8,32 @@ Comparing to Lists and Dictionaries
 
 If you are already familiar with Python's dictionaries and lists, then the following might give useful insight into what I mean by *ultra-inclusive*:
 
-A rolne is like a dictionary because it let's you use a name to reference an elements: ::
+A rolne is like a dictionary because you use a name to reference elements: ::
 
    >>> zippy["size"] = 4
 
-A rolne is like a list because the elements are _ordered_ and can be referenced by a dynamic integer index.
+A rolne is like a list because the elements are _ordered_.
 
    >>> zippy.append("fruit", "apple")
    >>> zippy.append("fruit", "bannana")
    >>> zippy.append("fruit", "orange")
+   >>> zippy.append("fruit", "bannana")
    >>> zippy.list_values("fruit")
-   ['apple', 'bannana', 'orange']
+   ['apple', 'bannana', 'orange', 'bannana']
+   
+And can be referred to by an index:
+
+   >>> zippy.has("fruit", bannana, 1)
+   True
    
 But,
-   * In a dictionary, the *names* (keys) are unique. In a rolne, multiple items can (and often do) have the same name.
-   * In a list, the place in the list is strictly an integer index. In a rolne, the place in the list is based both on the name, value, *and* index.
+   * In a dictionary, the names (keys) must be unique.
+   
+     In a rolne, multiple items can (and often do) have the same name.
+
+   * In a list, the place in the list is strictly an integer index.
+   
+     In a rolne, the place in the list is based on the name, value, *and* index.
 
 Let's Start with an Example
 ---------------------------
@@ -106,10 +117,10 @@ Notice that **all three parts** of the key where used. That is a means of explic
 If not specified, the following are the base assumptions:
 
  * name is <any>
- * value is None
+ * value is <any> (when locating, value is None when specifying)
  * index is 0
 
-So, ``["messages"]`` is the same thing as ``["messages", None, 0]``.
+So, ``["messages"]`` finds the first item with a name of `messages` regardless of the value.
 
 Now, let's dive down further: ::
 
@@ -121,12 +132,12 @@ Now, let's dive down further: ::
    heading = Re: Reminder
    body = I will not
 
-In this case, we are looking at the first ``"messages"``/``None`` and the second ``"note"``/``None``. Notice the ``1`` index. That reference the second item (but only of ``"note"``/``None`` items).
+In this case, we are looking at the first ``"messages"``/``None`` and the second ``"note"``/``None``. Notice the ``1`` index. That references the second item of any ``"note"``/``None`` items.
 
 Relationships
 -------------
 
-Let me point a variable at the location. ::
+Let me point a variable i'll call '**here**' at a specific location. ::
 
    >> here = my_xml["messages"]["note", None, 1]
    
@@ -134,7 +145,7 @@ Now let's examine some of the relationships of the variable called "**here**":
 
 .. image:: relations.png
 
-So, let's try some stuff out: ::
+Let's try some stuff out: ::
 
    >>> here.name
    note
@@ -162,12 +173,14 @@ So, let's try some stuff out: ::
    >>> here["to"].value
    Jani
  
-BTW, what is the difference between ``here.find("to")`` and ``here["to"]``. Allow me to demonstrate by search for a key that does not exist: ::
+BTW, what is the difference between ``here.find("to")`` and ``here["to"]``. Allow me to demonstrate with a search for a key that does not exist: ::
 
-   >> here["blah"]
-   Key Error...
-   >> here.find("blah")
+   >>> here["blah"]
+   KeyError: "('blah',) not found"
+   >>> here.find("blah")
    None
+
+Essentially, the *find* method avoids key errors by returning None rather than a subtending rolne.
 
 Most of the expected behaviors one would expect from a pythonic class are supported. For example, iteration: ::
 

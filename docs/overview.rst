@@ -23,7 +23,7 @@ A rolne is like a list because the elements are _ordered_.
    
 And can be referred to by an index:
 
-   >>> zippy.has("fruit", bannana, 1)
+   >>> zippy.has("fruit", "bannana", 1)
    True
    
 But,

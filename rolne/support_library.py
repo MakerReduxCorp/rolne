@@ -4,24 +4,41 @@
 #
     
 import copy
-#from . import rolne
+import numbers
 
 TNAME = 0
 TVALUE = 1
 TLIST = 2
 TSEQ = 3
 
-NS = 101
+COPY_NS = -99
 
-def _seq(self, seq=None):
-    global NS
+def _seq(self, seq=None, inc=1):
+    # decide on a starting point (result)
     if seq:
         result = str(seq)
     else:
-        result = str(NS)
-        NS += 1
+        result = str(self.NS[0])
+        self.NS[0] += inc
+    # now account for duplicates
+    ext = 2
+    if _seq_find_dup(self.ancestor, result):
+        try_result = result+" ("+str(ext)+")"
+        while _seq_find_dup(self.ancestor, try_result) and ext<100000:
+            ext += 1
+            try_result = result+" ("+str(ext)+")"
+        result = try_result
     return result
 
+def _seq_find_dup(data, seq):
+    for item in data:
+        if item[TSEQ]==seq:
+            return True
+        if item[TLIST]:
+            if _seq_find_dup(item[TLIST], seq):
+                return True
+    return False
+    
 def mards(self, detail=False):
     # this is NOT, of course, a _real_ MARDS representation.
     # for example, it is possible for a 'rolne' name to be a string with spaces.
@@ -70,12 +87,16 @@ def poss_quotes(value):
         return u'"'+printable+u'"'
     return printable
 
-def _extend(self, sublist, prefix):
+def _extend(self, sublist, prefix, retain_seq):
     new_list = []
     for entry in sublist:
         (en, ev, el, es) = entry
-        sub_list = _extend(self, el, prefix)
-        tup = (en, ev, sub_list, prefix+_seq(self))
+        if retain_seq:
+            seq = _seq(self, seq=prefix+es)
+        else:
+            seq = prefix+_seq(self)
+        sub_list = _extend(self, el, prefix, retain_seq)
+        tup = (en, ev, sub_list, seq)
         new_list.append(tup)
     return new_list
         
@@ -167,7 +188,66 @@ def _serialize(self, data, name_prefix, value_prefix, index_prefix, explicit, pa
         result.extend(sub)
     return result
 
-def _flatten(data):
+def _serialize_names(self, data, name_prefix, value_prefix, index_prefix, explicit, path=None):
+    result = []
+    ctr = {}
+    if path is None:
+        path = name_prefix
+    else:
+        path += name_prefix
+    for entry in data:
+        # the counter function
+        if entry[TNAME] in ctr:
+            ctr[entry[TNAME]] += 1
+        else:
+            ctr[entry[TNAME]] = 0
+        # make the tuple
+        idx = ctr[entry[TNAME]]
+        if explicit:
+            full_path = path+unicode(entry[TNAME])
+            full_path += index_prefix+str(idx)
+        else:
+            full_path = path+unicode(entry[TNAME])
+            if idx>0:
+                full_path += index_prefix+str(idx)
+        sub = []
+        if entry[TLIST]:
+            # notice that the 'args' parameter does not get passed on recursion. That
+            # is because the search only happen at layer one.
+            sub = _serialize_names(self, entry[TLIST], name_prefix, value_prefix, index_prefix, explicit, path=full_path)
+        tup = (full_path, entry[TVALUE], [], entry[TSEQ])
+        result.append(tup)
+        result.extend(sub)
+    return result
+
+def _deserialize_names(self, data, name_prefix, value_prefix, index_prefix, level=0):
+    result = []
+    next_ptr = result
+    ref_data = copy(data)
+    for entry in data:
+        chunks = entry[TNAME].split(name_prefix)
+        if chunks:
+            if not chunks[0]:
+                del chunks[0] # the first entry is always/often empty
+        if len(chunks)==(level+1):
+            parts = chunks[-1].split(index_prefix)
+            if len(parts)==0:
+                continue
+            elif len(parts)==1:
+                name = parts[0]
+                index = 0
+            else:
+                name = parts[0]
+                index = parts[1]
+            result.append((name, entry[TVALUE], entry[TLIST], entry[TSEQ]))
+        elif len(chunks)>(level+1):
+            (en, ev, el, es) = result[-1]
+            el += _deserialize_names(self, data, name_prefix, value_prefix, index_prefix, level+1)
+            result[-1] = (en, ev, el, es)
+    return result
+    
+def _flatten(data, args):
+    arg_count = len(args)
     result = []
     ctr = {}
     for entry in data:
@@ -182,12 +262,52 @@ def _flatten(data):
         if entry[TLIST]:
             # notice that the 'args' parameter does not get passed on recursion. That
             # is because the search only happen at layer one.
-            sub = _flatten(entry[TLIST])
-        tup = (entry[TNAME], entry[TVALUE], [], entry[TSEQ])
-        result.append(tup)
+            sub = _flatten(entry[TLIST], args)
+        # insert as dictated by args given
+        append_flag = False
+        if arg_count==0:
+            append_flag = True
+        if arg_count==1:
+            if entry[TNAME]==args[0]:
+                append_flag = True
+        if arg_count==2:
+            if entry[TNAME]==args[0] and entry[TVALUE]==args[1]:
+                append_flag = True
+        if arg_count==3:
+            if entry[TNAME]==args[0] and entry[TVALUE]==args[1]:
+                if ctr[(entry[TNAME], entry[TVALUE])]==args[2]:
+                    append_flag = True
+        if append_flag:
+            tup = (entry[TNAME], entry[TVALUE], [], entry[TSEQ])
+            result.append(tup)
         result.extend(sub)
     return result
-    
+   
+def _renumber(self, data, increment, prefix, suffix):
+    result = []
+    for entry in data:
+        seq = str(self.NS[0])
+        if prefix:
+            seq = prefix+seq
+        if suffix:
+            seq = seq+suffix
+        self.NS[0] += increment
+        # now account for duplicates
+        if self.ref_seq is not None:  #am i a child (not the root)?
+            ext = 2
+            if _seq_find_dup(self.ancestor, seq):
+                try_result = seq+" ("+str(ext)+")"
+                while _seq_find_dup(self.ancestor, try_result) and ext<100000:
+                    ext += 1
+                    try_result = seq+" ("+str(ext)+")"
+                seq = try_result
+        if entry[TLIST]:
+            sub = _renumber(self, entry[TLIST], increment, prefix, suffix)
+        else:
+            sub = []
+        tup = (entry[TNAME], entry[TVALUE], sub, seq)
+        result.append(tup)
+    return result
     
 def _dump(self, data):
     result = []
@@ -336,11 +456,17 @@ def _copy_sublist_with_new_seq(self, source, prefix):
         dest.append(new_tup)
     return dest
 
-def _copy(self, seq_prefix, seq_suffix, data):
+def _copy(self, seq_prefix, seq_suffix, data, renumber):
+    global COPY_NS
     new_list = []
     for (ev, en, el, es) in data:
-        sub = _copy(self, seq_prefix, seq_suffix, el)
-        new_list.append((copy.copy(ev), copy.copy(en), sub, seq_prefix+es+seq_suffix))
+        if renumber:
+            mid = str(COPY_NS)
+        else:
+            mid = es
+        COPY_NS += 1
+        sub = _copy(self, seq_prefix, seq_suffix, el, renumber)
+        new_list.append((copy.copy(ev), copy.copy(en), sub, seq_prefix+mid+seq_suffix))
     return new_list
 
 def dump_list(self, args, name=False, value=False, index=False, seq=False):

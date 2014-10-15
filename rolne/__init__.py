@@ -34,6 +34,11 @@ Internal Notes:
     There are 4 globals in the doc: TNAME, TVALUE, TLIST, TSEQ to make the
     numeric index of each of these tuple elements easier to read.
         
+    self.ancestor contains the 'data' as seen from the 'root'.
+    self.ref_name, self.ref_value, self.ref_seq are the "attributes of self".
+        Normaly, at root, these are all None since root CANNOT have
+        a name, value, or seq. But when a subtending reference is made, it
+        indeed can under the right circumstances.
 '''
 
 class rolne(object):
@@ -294,6 +299,47 @@ class rolne(object):
     #-------------------
     @property
     def name(self):
+        """Name property.
+
+        This property represents the name of the rolne in its current context.
+        For a new or original rolne, the name is always None. That is because
+        the *root* of a rolne cannot conceptually have its own name.
+        
+        It is possible to both read and write to the name property. Any change to
+        name is also seen in other contexts. It is strongly recommended that name
+        be given an immutable value.
+        
+        It is not possible to delete the name property.
+
+        Example of use:
+
+        >>> # setup an example rolne first
+        >>> my_var = rolne()
+        >>> my_var.append("item", "zing")
+        >>> my_var["item", "zing"].append("size", "4")
+        >>> my_var["item", "zing"].append("color", "red")
+        >>> my_var["item", "zing"]["color", "red"].append("intensity", "44%")
+        >>> my_var["item", "zing"].append("reverse", None)
+        >>> my_var.append("item", "broom")
+        >>> my_var["item", "broom", -1].append("size", "1")
+        >>> my_var["item", "broom", -1].append("title", 'The "big" thing')
+        >>> my_var.append("item", "broom")
+        >>> my_var["item", "broom", -1].append("size", "2")
+        >>> my_var["item", "broom", -1].append("title", 'Other thing')
+        >>> #
+        >>> print my_var.name
+        None
+        >>> temp = my_var["item", "broom", 2]
+        >>> print temp.name
+        item
+        >>> temp.name = "hello"
+        >>> print temp.name
+        hello
+        >>> print my_var["hello", "broom", 2].name
+        hello
+
+        .. versionadded:: 0.2.1
+        """
         return self.ref_name
 
     @name.setter
@@ -311,6 +357,16 @@ class rolne(object):
     #-------------------
     @property
     def value(self):
+        """value property.
+
+        This property represents the value (of name/value) assigned to the rolne in its
+        current context. For a new or original rolne, the seq is always None. That is because
+        the *root* of a rolne cannot conceptually have a value.
+
+        You can both read and write value. If it is deleted, it is simply set to None.
+        
+        .. versionadded:: 0.2.1
+        """
         return self.ref_value
 
     @value.setter
@@ -335,11 +391,22 @@ class rolne(object):
     #-------------------
     @property
     def seq(self):
+        """Sequence property.
+
+        This property represents the sequence assigned to the rolne in its current context.
+        For a new or original rolne, the seq is always None. That is because
+        the *root* of a rolne cannot conceptually have a sequence.
+
+        You can both read and write seq. However, it is not possible to delete. If written, the
+        given value is always converted to a string. TODO: test string conversion
+        
+        .. versionadded:: 0.2.1
+        """
         return self.ref_seq
 
     @seq.setter
     def seq(self, seq):
-        self.change(seq=seq)
+        self.change(seq=str(seq))
         return None
 
     @seq.deleter
@@ -393,8 +460,8 @@ class rolne(object):
         >>> #
         >>> print my_var.find("item","broom",1)
         %rolne:
-        size 2
-        title Other thing
+        size = 2
+        title = "Other thing"
         <BLANKLINE>
         >>> print my_var.find("item","broom",2)
         None
@@ -439,21 +506,21 @@ class rolne(object):
         >>> my_var["item", "zing"].append("color", "red")
         >>> print my_var
         %rolne:
-        item zing
-            size 4
-            color red
+        item = zing
+            size = 4
+            color = red
         <BLANKLINE>
         >>> my_var.append("item", "zing")
         >>> my_var["item", "zing", -1].append("size", "2")
         >>> my_var["item", "zing", -1].append("color", "blue")
         >>> print my_var
         %rolne:
-        item zing
-            size 4
-            color red
-        item zing
-            size 2
-            color blue
+        item = zing
+            size = 4
+            color = red
+        item = zing
+            size = 2
+            color = blue
         <BLANKLINE>
 
         .. versionadded:: 0.1.1
@@ -490,21 +557,21 @@ class rolne(object):
         >>> my_var["item", "zing"].append("color", "red")
         >>> print my_var
         %rolne:
-        item zing
-            size 4
-            color red
+        item = zing
+            size = 4
+            color = red
         <BLANKLINE>
         >>> my_var.append("item", "zing")
         >>> my_var["item", "zing", -1].append("size", "2")
         >>> my_var["item", "zing", -1].append("color", "blue")
         >>> print my_var
         %rolne:
-        item zing
-            size 4
-            color red
-        item zing
-            size 2
-            color blue
+        item = zing
+            size = 4
+            color = red
+        item = zing
+            size = 2
+            color = blue
         <BLANKLINE>
 
         .. versionadded:: 0.1.1
@@ -544,9 +611,9 @@ class rolne(object):
         >>> my_var["item", "zing", index].append("color", "red")
         >>> print my_var
         %rolne:
-        item zing
-            size 4
-            color red
+        item = zing
+            size = 4
+            color = red
         <BLANKLINE>
         >>> index = my_var.append_index("item", "zing")
         >>> print index
@@ -555,12 +622,12 @@ class rolne(object):
         >>> my_var["item", "zing", index].append("color", "blue")
         >>> print my_var
         %rolne:
-        item zing
-            size 4
-            color red
-        item zing
-            size 2
-            color blue
+        item = zing
+            size = 4
+            color = red
+        item = zing
+            size = 2
+            color = blue
         <BLANKLINE>
 
         .. versionadded:: 0.1.4
@@ -603,22 +670,22 @@ class rolne(object):
         >>> my_var["item", "zing"].append("color", "blue")
         >>> print my_var
         %rolne:
-        item zing
-            color blue
+        item = zing
+            color = blue
         <BLANKLINE>
         >>> my_var.upsert("item", "zing")
         False
         >>> print my_var
         %rolne:
-        item zing
-            color blue
+        item = zing
+            color = blue
         <BLANKLINE>
         >>> my_var.upsert("item", "broom")
         False
         >>> print my_var
         %rolne:
-        item broom
-            color blue
+        item = broom
+            color = blue
         <BLANKLINE>
 
         .. versionadded:: 0.1.1
@@ -1095,7 +1162,7 @@ class rolne(object):
 
 if __name__ == "__main__":
 
-    if True:
+    if False:
 
         my_var = rolne()
         my_var.append("item", "zing")
@@ -1168,6 +1235,7 @@ if __name__ == "__main__":
         print "n1", s
         j = rolne().unpickle(s)
         print "n2", j
+        print my_var["zope"]
 
         #my_var.append("joe", "blow", seq="101")
         #my_var.append("joe", "blow", seq="101")
@@ -1185,8 +1253,12 @@ if __name__ == "__main__":
         print
         import doctest
         print "Testing begins. Errors found:"
+        # print doctest.run_docstring_examples(rolne.name, None) # apparently doctest does not work on @property items
+        # print doctest.run_docstring_examples(rolne.value, None) # apparently doctest does not work on @property items
+        # print doctest.run_docstring_examples(rolne.seq, None) # apparently doctest does not work on @property items
         print doctest.run_docstring_examples(rolne.find, None)
         print doctest.run_docstring_examples(rolne.append, None)
         print doctest.run_docstring_examples(rolne.append_index, None)
         print doctest.run_docstring_examples(rolne.upsert, None)
+        print doctest.run_docstring_examples(rolne.extend, None)
         
